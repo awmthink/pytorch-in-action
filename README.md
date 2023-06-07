@@ -12,8 +12,12 @@
 # todo
 
 - [ ] 分布式训练ImageNet
+    * https://pytorch.org/tutorials/distributed/home
+    * https://github.com/pytorch/examples/tree/main/imagenet
+    * https://gist.github.com/TengdaHan/1dd10d335c7ca6f13810fff41e809904
 - [ ] Tensorboard
 - [ ] 混合精度训练
 - [ ] pytorch lighting
 - [ ] torch script
-- [ ] DataSet from Ceph
+- [ ] DataSet from Ceph & memcached: https://ones.ainewera.com/wiki/#/team/JNwe8qUX/space/TnJXc1Uj/page/KPkEPxAB
+- [ ] 使用dali进行预处理加速等: https://docs.nvidia.com/deeplearning/dali/user-guide/docs/examples/use_cases/pytorch/resnet50/pytorch-resnet50.html
