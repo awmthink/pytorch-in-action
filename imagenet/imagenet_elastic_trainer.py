@@ -127,7 +127,7 @@ parser.add_argument(
 
 parser.add_argument(
     "--checkpoints-path",
-    default="",
+    default=".",
     type=str,
     metavar="PATH",
     help="path to checkpoints (default: current path)",
