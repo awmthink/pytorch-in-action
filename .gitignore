@@ -112,3 +112,4 @@ data
 
 # pytorch
 *.pt
+lightning_logs

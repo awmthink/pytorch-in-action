@@ -1,4 +1,5 @@
 import torch
+
 from . import d2l
 
 
@@ -30,9 +31,9 @@ def nn_epoch(data_iter, model, loss, optimizer, device):
 
 
 def nn_train(
-    training_iter, testing_iter, model, loss, optimizer, devices, epoch=20, plot=True
+    training_iter, testing_iter, model, loss, optimizer, devices, epoch=20, writer=None
 ):
-    animator = d2l.Animator(xlabel="epoch", ylabel="loss", xlim=[1, epoch])
+    # animator = d2l.Animator(xlabel="epoch", ylabel="loss", xlim=[1, epoch])
     device = devices
     if isinstance(devices, (tuple, list)):
         device = devices[0]
@@ -41,10 +42,11 @@ def nn_train(
             training_iter, model, loss, optimizer, device
         )
         _, epoch_test_acc = nn_epoch(testing_iter, model, loss, None, device)
-        animator.add(
-            i + 1,
-            (epoch_train_loss, epoch_train_acc, epoch_test_acc),
-        )
+        if writer is None:
+            continue
+        writer.add_scalar("Loss/train", epoch_train_loss, i)
+        writer.add_scalar("Accuracy/train", epoch_train_acc, i)
+        writer.add_scalar("Accuracy/test", epoch_test_acc, i)
     print(
         f"epoch {i + 1}: train_loss: {epoch_train_loss:.4f}, train_acc: {epoch_train_acc: .4f}, test_acc: {epoch_test_acc: .4f}"
     )

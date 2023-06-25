@@ -22,7 +22,11 @@ import torchvision.transforms as transforms
 from torch.optim.lr_scheduler import StepLR
 from torch.utils.data import Subset
 
-all_vision_models = models.list_models(module=models)
+all_vision_models = sorted(
+    name
+    for name in models.__dict__
+    if name.islower() and not name.startswith("__") and callable(models.__dict__[name])
+)
 
 parser = argparse.ArgumentParser(description="PyTorch ImageNet Distributed Trainer")
 
@@ -219,10 +223,10 @@ def main_worker(args):
     # create model
     if args.pretrained:
         print("=> using pre-trained model '{}'".format(args.arch))
-        model = models.get_model(args.arch, weights="DEFAULT")
+        model = models.__dict__[args.arch](pretrained=True)
     else:
         print("=> creating model '{}'".format(args.arch))
-        model = models.get_model(args.arch)
+        model = models.__dict__[args.arch]()
 
     device = local_rank
     model = model.to(device)
