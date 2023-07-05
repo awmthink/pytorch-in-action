@@ -20,7 +20,16 @@
 
 # todo
 
-- [ ] https://github.com/aladdinpersson/Machine-Learning-Collection
-- [ ] 学习torch script、onnx exporter等
+- [ ] Pytorch lightning basic / intermediate / advanced / expert
+    - [x] Imagenet dataset form meta
+    - [ ] read hparam from config
+    - [ ] load ckpt/log/dataset from s3
+    - [ ] 形成一套模板
+    - [ ] 在集群上使用
 - [ ] DataSet from Ceph & memcached: https://ones.ainewera.com/wiki/#/team/JNwe8qUX/space/TnJXc1Uj/page/KPkEPxAB
-- [ ] 使用dali进行预处理加速等: https://docs.nvidia.com/deeplearning/dali/user-guide/docs/examples/use_cases/pytorch/resnet50/pytorch-resnet50.html
+- [ ] https://lightning.ai/docs/pytorch/latest/tutorials.html
+- [ ] https://github.com/aladdinpersson/Machine-Learning-Collection
+    - [ ] pytorch basic and advacned
+    - [ ] Detection
+    - [ ] GAN
+- [ ] UP & OpenMM_XX

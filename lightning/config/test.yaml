@@ -1,0 +1,16 @@
+# pytorch_lightning==2.0.4
+seed_everything: true
+trainer:
+  accelerator: gpu
+  devices: 1
+  num_nodes: 1
+  precision: 16-mixed
+model:
+  model_name: resnet18
+  weights: ResNet18_Weights.IMAGENET1K_V1
+  learning_rate: 0.01
+data:
+  root_dir: /data/datasets/ImageNet-1K/raw/ImageNet-1K
+  batch_size: 32
+  num_workers: 4
+ckpt_path: ./checkpoints/epoch=0-step=10010-v1.ckpt

@@ -10,7 +10,6 @@ from enum import Enum
 import torch
 import torch.backends.cudnn as cudnn
 import torch.distributed as dist
-import torch.multiprocessing as mp
 import torch.nn as nn
 import torch.nn.parallel
 import torch.optim
@@ -18,9 +17,7 @@ import torch.utils.data
 import torch.utils.data.distributed
 import torchvision.datasets as datasets
 import torchvision.models as models
-import torchvision.transforms as transforms
 from torch.optim.lr_scheduler import StepLR
-from torch.utils.data import Subset
 
 all_vision_models = sorted(
     name
@@ -28,7 +25,7 @@ all_vision_models = sorted(
     if name.islower() and not name.startswith("__") and callable(models.__dict__[name])
 )
 
-parser = argparse.ArgumentParser(description="PyTorch ImageNet Distributed Trainer")
+parser = argparse.ArgumentParser(description="ImageNet PyTorch  Distributed Trainer")
 
 parser.add_argument(
     "data",
@@ -237,7 +234,7 @@ def main_worker(args):
 
     optimizer = torch.optim.SGD(
         model.parameters(),
-        args.lr,
+        lr=args.lr,
         momentum=args.momentum,
         weight_decay=args.weight_decay,
     )
@@ -527,10 +524,13 @@ def accuracy(output, target, topk=(1,)):
     with torch.no_grad():
         maxk = max(topk)
         batch_size = target.size(0)
-
+        # output: BxK
+        # pred: Bxmaxk
         _, pred = output.topk(maxk, 1, True, True)
         pred = pred.t()
+        # pred: maxk x B
         correct = pred.eq(target.view(1, -1).expand_as(pred))
+        # correct: maxk x B
 
         res = []
         for k in topk:
