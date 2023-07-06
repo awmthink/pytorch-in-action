@@ -20,16 +20,11 @@
 
 # todo
 
-- [ ] Pytorch lightning basic / intermediate / advanced / expert
-    - [x] Imagenet dataset form meta
-    - [ ] read hparam from config
-    - [ ] load ckpt/log/dataset from s3
-    - [ ] 形成一套模板
-    - [ ] 在集群上使用
 - [ ] DataSet from Ceph & memcached: https://ones.ainewera.com/wiki/#/team/JNwe8qUX/space/TnJXc1Uj/page/KPkEPxAB
 - [ ] https://lightning.ai/docs/pytorch/latest/tutorials.html
 - [ ] https://github.com/aladdinpersson/Machine-Learning-Collection
     - [ ] pytorch basic and advacned
     - [ ] Detection
     - [ ] GAN
+- [ ] Pytorch lightning basic / intermediate / advanced / expert
 - [ ] UP & OpenMM_XX

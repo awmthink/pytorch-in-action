@@ -3,8 +3,8 @@
 
 # SLURM SUBMIT SCRIPT
 #SBATCH --nodes=4
+#SBATCH -gres=gpu:4
 #SBATCH --ntasks-per-node=4
-#SBATCH --gpus-per-task=1
 
 # debugging flags (optional)
 #export NCCL_DEBUG=INFO
@@ -18,4 +18,4 @@
 # module load NCCL/2.4.7-1-cuda.10.0
 
 # run script from above
-srun python main.py fit
+srun python main.py fit --trainer.num_nodes=4 --trainer.devices=4 --data.root_dir=/mnt/cache/share/images/
