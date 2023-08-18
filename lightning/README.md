@@ -43,4 +43,5 @@ export S3_USE_HTTPS=0
 
 ## Todo
 
-- [ ] Auto Resuming 
+- [ ] Go through the baisc, imtermediate, advacned, expert tutorials
+- [ ] Auto Resuming After Interruption

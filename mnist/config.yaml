@@ -1,0 +1,39 @@
+# pytorch_lightning==2.0.4
+seed_everything: true
+trainer:
+  accelerator: gpu
+  strategy: ddp
+  devices: 2
+  num_nodes: 1
+  precision: 16-mixed
+  logger: null
+  default_root_dir: s3://experiments/mnist
+  callbacks:
+    - class_path: pytorch_lightning.callbacks.ModelCheckpoint
+      init_args:
+        monitor: val_loss
+    - class_path: pytorch_lightning.callbacks.EarlyStopping
+      init_args:
+        monitor: val_loss
+  fast_dev_run: false
+  max_epochs: 5
+  min_epochs: 1
+  profiler: null
+  enable_progress_bar: true
+model:
+  model:
+    class_path: SimpleRNN
+    init_args:
+      rnn_type: lstm
+      bidirectional: true
+      input_size: 28
+      num_hiddens: 256
+      num_layers: 2
+      num_classes: 10
+  num_classes: 10
+  learning_rate: 0.003
+data:
+  data_dir: ../data
+  batch_size: 32
+  num_workers: 4
+ckpt_path: null

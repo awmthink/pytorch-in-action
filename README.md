@@ -16,15 +16,3 @@
 # Image Classification
 
 - [ImageNet](./imagenet/README.md): 介绍了一个完整的Imagenet上进行图像分类的训练代码，包括了: 快照保存与恢复，多机多卡数据并行等功能、LR Scheduler等。
-
-
-# todo
-
-- [ ] DataSet from Ceph & memcached: https://ones.ainewera.com/wiki/#/team/JNwe8qUX/space/TnJXc1Uj/page/KPkEPxAB
-- [ ] https://lightning.ai/docs/pytorch/latest/tutorials.html
-- [ ] https://github.com/aladdinpersson/Machine-Learning-Collection
-    - [ ] pytorch basic and advacned
-    - [ ] Detection
-    - [ ] GAN
-- [ ] Pytorch lightning basic / intermediate / advanced / expert
-- [ ] UP & OpenMM_XX
