@@ -16,3 +16,14 @@
 # Image Classification
 
 - [ImageNet](./imagenet/README.md): 介绍了一个完整的Imagenet上进行图像分类的训练代码，包括了: 快照保存与恢复，多机多卡数据并行等功能、LR Scheduler等。
+
+
+# transformers
+
+- [transformers库的整体介绍：包括了Pipeline、Tokenizer、Model、Trainer、Dataset、Evaluate等](./transformers/tutorials.ipynb)
+- [Tokenizer的各个功能的详细介绍](./transformers/tokenizer.ipynb)
+- [Bert模型深入分析各个层和算子的实现细节](./transformers/bert_model.ipynb)
+- [DistillBert模型结构的分析与前向过程](./transformers/distilbert_cls.ipynb)
+- [Decode模型的代表GPT2的结构与计算过程分析](./transformers/gpt2_model.ipynb)
+- [Encoder-Deocder结构的代表T5模型的详细分析](./transformers/t5_model.ipynb)
+- [基于小型BERT模型rbt3的文本分类的完整Finetune流程](./transformers/text_cls_finetune.ipynb)
