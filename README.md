@@ -1,4 +1,7 @@
-# Pytorch tutorials
+# Pytorch In Action
+
+
+## Pytorch Basics
 
 - [Tensor](./01_Tensor.ipynb)：介绍了pytorch中多维数组`Tensor`的基本使用，包括了它的属性、创建方法以及它支持的常见的运算
 - [Automatic Differentiation](./02_AutoDiff.ipynb)：介绍了Pytorch中强的自动微分机制
@@ -11,14 +14,18 @@
 - [Auto Mixture Precision](./09_AutoMixPrecision.ipynb): 介绍了如何开启自动混合精度来加速模型的训练
 - [Pytorch Lightning](./10_PytorchLightning.ipynb): 介绍了使用Pytorch Lightning来模块化我们的训练代码
 
+## Deep learning modules
+
+- [Convolution](./modules/convolution.ipynb)
 
 
-# Image Classification
+
+## Image Classification
 
 - [ImageNet](./imagenet/README.md): 介绍了一个完整的Imagenet上进行图像分类的训练代码，包括了: 快照保存与恢复，多机多卡数据并行等功能、LR Scheduler等。
 
 
-# transformers
+## transformers
 
 - [transformers库的整体介绍：包括了Pipeline、Tokenizer、Model、Trainer、Dataset、Evaluate等](./transformers/tutorials.ipynb)
 - [Tokenizer的各个功能的详细介绍](./transformers/tokenizer.ipynb)
