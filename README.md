@@ -27,8 +27,8 @@
 
 | Title | Notebooks | 说明 |
 | :---: | :---: | --- |
-| Convolution实现 | [convolution.ipynb](./cnn/convolution.ipynb) | 从零开始分别实现了单通道卷积、多输入输出通道卷积、以及各种其他高效实现方案，包括 im2col 等，同时通过代码演示了转置卷积的实现原理以及卷积的反向传播实现原理。 |
-| RNN 实现 | [simple_rnn.ipynb](./rnn/simple_rnn.ipynb), [lstm.ipynb](./rnn/lstm.ipynb),[gru.ipynb](./rnn/gru.ipynb) | 分别实现了 SimpleRNN、LSTM、GRU的单 Cell 以及多层双向网络的实现。 |
+| Convolution实现 | [convolution.ipynb](./models/convolution.ipynb) | 从零开始分别实现了单通道卷积、多输入输出通道卷积、以及各种其他高效实现方案，包括 im2col 等，同时通过代码演示了转置卷积的实现原理以及卷积的反向传播实现原理。 |
+| RNN 实现 | [simple_rnn.ipynb](./models/simple_rnn.ipynb), [lstm.ipynb](./models/lstm.ipynb),[gru.ipynb](./models/gru.ipynb) | 分别实现了 SimpleRNN、LSTM、GRU的单 Cell 以及多层双向网络的实现。 |
 
 
 ## Image Classification
@@ -36,7 +36,6 @@
 | Title | Notebooks | 说明 |
 |:---:|:---:|---|
 | ImageNet 训练 | [ImageNet](./imagenet/README.md) | 介绍了一个完整的Imagenet上进行图像分类的训练代码，包括了: 快照保存与恢复，多机多卡数据并行等功能、LR Scheduler等 |
-
 
 ## NLP
 
