@@ -29,6 +29,7 @@
 | :---: | :---: | --- |
 | Convolution实现 | [convolution.ipynb](./models/convolution.ipynb) | 从零开始分别实现了单通道卷积、多输入输出通道卷积、以及各种其他高效实现方案，包括 im2col 等，同时通过代码演示了转置卷积的实现原理以及卷积的反向传播实现原理。 |
 | RNN 实现 | [simple_rnn.ipynb](./models/simple_rnn.ipynb), [lstm.ipynb](./models/lstm.ipynb),[gru.ipynb](./models/gru.ipynb) | 分别实现了 SimpleRNN、LSTM、GRU的单 Cell 以及多层双向网络的实现。 |
+| Transformer 架构实现 | [Transformer.ipynb](./models/transformer.ipynb)| 从零开始实现了 Token Embedding、位置编码、多头注意力模块等，并实现和验证了 EncodeLayer 以及 DecodeLayer 中的计算细节 |
 
 
 ## Image Classification
