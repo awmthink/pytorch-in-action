@@ -23,7 +23,7 @@ A hands-on repository dedicated to building mainstream deep learning models from
 | Tensorboard | [Tensorboard](./pytorch-advanced/08_Tensorboard.ipynb)| 介绍了使用TensorBoard来记录训练过程中的一些Metrics |
 | Auto Mixture Precision | [AutoMixPrecision](./pytorch-advanced/09_AutoMixPrecision.ipynb)| 介绍了如何开启自动混合精度来加速模型的训练 |
 | Pytorch Lightning | [PytorchLightning](./pytorch-advanced/10_PytorchLightning.ipynb)| 介绍了使用Pytorch Lightning来模块化我们的训练代码 |
-
+| Pytorch Image Models | [Timm](./timm/tutuorials.ipynb)| 介绍了如何使用 timm 库来获取主流的视觉模型以及预训练权重，我们也可以基于这些模型进行扩展 |
 
 ## Models
 
@@ -33,6 +33,12 @@ A hands-on repository dedicated to building mainstream deep learning models from
 | RNN 实现 | [simple_rnn.ipynb](./models/simple_rnn.ipynb), [lstm.ipynb](./models/lstm.ipynb),[gru.ipynb](./models/gru.ipynb) | 分别实现了 SimpleRNN、LSTM、GRU的单 Cell 以及多层双向网络的实现。 |
 | Transformer 架构实现 | [Transformer.ipynb](./models/transformer.ipynb)| 从零开始实现了 Token Embedding、位置编码、多头注意力模块等，并实现和验证了 EncodeLayer 以及 DecodeLayer 中的计算细节，比如 Padding mask 和 casual mask 的计算，在推理时自回归式的进行生成等 |
 | 使用 Seq2Seq 模型来进行机器翻译 | [seq2seq.ipynb](./models/seq2seq.ipynb) | 演示了机器翻译数据集的预处理过程，通过 torch 中对于 Transformer 架构的支持，构建了一个 6 层的 Enocer-Decoder 架构的模型，实现了其正向的计算过程和整个模型的训练过程。|
+| Vision Transformer| [vit.ipynb](./models/vit.ipynb) | TODO |
+| Swin Transformer| [swin.ipynb](./models/swin.ipynb) | 实现了 SwinTransformer 的模型结构，从零开始实现了 PatchEmbedding、窗口化的自注意力机制、Shiftd Windows 机制、PathMerging 等 |
+| ConvMixer 架构实现| [conv_mixer.ipynb](./models/conv_mixer.ipynb) | 实现了 ConvMixer 的模型结构，展示了在一个 patch 化的输入上进行 depth-wise 的卷积以及 1x1 卷积的一种模块设计 |
+| Detection Transfomrer | [detr.ipynb](./models/detr.ipynb) | TODO |
+| ConvNext| [convnext.ipynb](./models/convnext.ipynb) | TODO |
+| Masked AutoEncoder| [mae.ipynb](./models/mae.ipynb) | TODO |
 
 
 ## Image Classification
