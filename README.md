@@ -1,6 +1,6 @@
 # Pytorch In Action
 
-A hands-on repository dedicated to building mainstream deep learning models from scratch using PyTorch
+A hands-on repository dedicated to building modern deep learning layers, models and tasks from scratch using PyTorch.
 
 
 ## Pytorch Basics
@@ -35,9 +35,10 @@ A hands-on repository dedicated to building mainstream deep learning models from
 | 使用 Seq2Seq 模型来进行机器翻译 | [seq2seq.ipynb](./models/seq2seq.ipynb) | 演示了机器翻译数据集的预处理过程，通过 torch 中对于 Transformer 架构的支持，构建了一个 6 层的 Enocer-Decoder 架构的模型，实现了其正向的计算过程和整个模型的训练过程。|
 | Vision Transformer| [vit.ipynb](./models/vit.ipynb) | TODO |
 | Swin Transformer| [swin.ipynb](./models/swin.ipynb) | 实现了 SwinTransformer 的模型结构，从零开始实现了 PatchEmbedding、窗口化的自注意力机制、Shiftd Windows 机制、PathMerging 等 |
+| MLPMixer | [mlpmixer.ipynb](./models/mlpmixer.ipynb)| 通过代码实现 MixerBlock，展示了如何通过只使用 MLP 来替换 SelfAttention 和 Conv 实现图像分类上的高效的模型结构|
 | ConvMixer 架构实现| [conv_mixer.ipynb](./models/conv_mixer.ipynb) | 实现了 ConvMixer 的模型结构，展示了在一个 patch 化的输入上进行 depth-wise 的卷积以及 1x1 卷积的一种模块设计 |
-| Detection Transfomrer | [detr.ipynb](./models/detr.ipynb) | TODO |
-| ConvNext| [convnext.ipynb](./models/convnext.ipynb) | TODO |
+| DEtection TRansfomrer | [detr.ipynb](./models/detr.ipynb) | TODO |
+| ConvNext| [convnext.ipynb](./models/convnext.ipynb) | 实现了 ConvNext 中核心的 ConvNeXtBlock，展示了如何通过 7x7 的 Depthwise Conv 和 Pointwise Conv 来模拟 Transformer Block 结构 |
 | Masked AutoEncoder| [mae.ipynb](./models/mae.ipynb) | 从零实现了 MAE 整个模型中的各个关键部分，尤其是对于图像的预处理部分，如何进行 Random Mask |
 
 
