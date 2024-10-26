@@ -38,7 +38,7 @@ A hands-on repository dedicated to building mainstream deep learning models from
 | ConvMixer 架构实现| [conv_mixer.ipynb](./models/conv_mixer.ipynb) | 实现了 ConvMixer 的模型结构，展示了在一个 patch 化的输入上进行 depth-wise 的卷积以及 1x1 卷积的一种模块设计 |
 | Detection Transfomrer | [detr.ipynb](./models/detr.ipynb) | TODO |
 | ConvNext| [convnext.ipynb](./models/convnext.ipynb) | TODO |
-| Masked AutoEncoder| [mae.ipynb](./models/mae.ipynb) | TODO |
+| Masked AutoEncoder| [mae.ipynb](./models/mae.ipynb) | 从零实现了 MAE 整个模型中的各个关键部分，尤其是对于图像的预处理部分，如何进行 Random Mask |
 
 
 ## Image Classification
