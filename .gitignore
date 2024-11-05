@@ -115,3 +115,5 @@ data
 lightning_logs
 checkpoints
 logs
+
+_build
