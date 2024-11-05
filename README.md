@@ -9,7 +9,7 @@ A hands-on repository dedicated to building modern deep learning layers, models 
 | Tensor | [tensor.ipynb](./pytorch-basics/tensor.ipynb) | 介绍了pytorch中多维数组`Tensor`的基本使用，包括了它的属性、创建方法以及它支持的常见的运算 |
 | Automatic Differentiation | [autograd.ipynb](./pytorch-basics/autograd.ipynb)     | 介绍了Pytorch中强大的自动微分机制，并尝试剖析其中背后的机制 |
 | Dataset and Dataloader | [data-loading.ipynb](./pytorch-basics/data-loading.ipynb)| 介绍了Pytorch中进行数据读取的接口以及自定义扩展的方法，从源码的角色分析了 Dataloader 的运作机制 |
-| Modules | [modules.ipynb](./pytorch-basics/modules.ipynb) | 介绍了定义深度学习中层、块、模型的基础类型Module的基本使用方法，并从源码角度分析了 Module 模块背后对于状态成员以及子 Module 的遍历机制 |
+| Modules | [modules.ipynb](./pytorch-basics/modules.ipynb) | 介绍了定义深度学习中层、块、模型的基础 类型Module的基本使用方法，并从源码角度分析了 Module 模块背后对于状态成员以及子 Module 的遍历机制 |
 | Save and Load | [save-and-load.ipynb](./pytorch-basics/save-and-load.ipynb)| 介绍了pytorch中数据、模型、优化器等进行序列化保存与加载的机制  |
 
 

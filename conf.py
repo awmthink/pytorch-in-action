@@ -65,10 +65,7 @@ templates_path = ["_templates"]
 #     ".DS_Store",
 # ]
 
-include_patterns = [
-    "index.rst",
-    "pytorch-basics/*.ipynb",
-]
+include_patterns = ["index.rst", "pytorch-basics/*.ipynb", "models/convnets/*.ipynb"]
 
 
 # -- Options for HTML output -------------------------------------------------
