@@ -27,37 +27,28 @@ A hands-on repository dedicated to building modern deep learning layers, models 
 
 ## Models
 
-[近两年有哪些ViT(Vision Transformer)的改进算法？ - 盘子正的回答 - 知乎](https://www.zhihu.com/question/538049269/answer/2532582294) 
 
-### ConvNet & MLP
+### ConvNets & MLP
 
 | Title | Notebooks | 说明 |
 | :---: | :---: | --- |
 | Convolution实现 | [convolution.ipynb](./models/convolution.ipynb) | 从零开始分别实现了单通道卷积、多输入输出通道卷积、以及各种其他高效实现方案，包括 im2col 等，同时通过代码演示了转置卷积的实现原理以及卷积的反向传播实现原理。 |
-| MLPMixer | [mlpmixer.ipynb](./models/mlpmixer.ipynb)| 通过代码实现 MixerBlock，展示了如何通过只使用 MLP 来替换 SelfAttention 和 Conv 实现图像分类上的高效的模型结构 |
-| ConvMixer 架构实现| [conv_mixer.ipynb](./models/conv_mixer.ipynb) | 实现了 ConvMixer 的模型结构，展示了在一个 patch 化的输入上进行 depth-wise 的卷积以及 1x1 卷积的一种模块设计 |
-| ConvNext| [convnext.ipynb](./models/convnext.ipynb) | 实现了 ConvNext 中核心的 ConvNeXtBlock，展示了如何通过 7x7 的 Depthwise Conv 和 Pointwise Conv 来模拟 Transformer Block 结构 |
-
-### Recurrent Model and Seq2Seq Model
-
-| Title | Notebooks | 说明 |
-| :---: | :---: | --- |
-| RNN 实现 | [simple_rnn.ipynb](./models/simple_rnn.ipynb), [lstm.ipynb](./models/lstm.ipynb),[gru.ipynb](./models/gru.ipynb) | 分别实现了 SimpleRNN、LSTM、GRU的单 Cell 以及多层双向网络的实现。 |
-| Transformer 架构实现 | [Transformer.ipynb](./models/transformer.ipynb)| 从零开始实现了 Token Embedding、位置编码、多头注意力模块等，并实现和验证了 EncodeLayer 以及 DecodeLayer 中的计算细节，比如 Padding mask 和 casual mask 的计算，在推理时自回归式的进行生成等 |
-| 使用 Seq2Seq 模型来进行机器翻译 | [seq2seq.ipynb](./models/seq2seq.ipynb) | 演示了机器翻译数据集的预处理过程，通过 torch 中对于 Transformer 架构的支持，构建了一个 6 层的 Enocer-Decoder 架构的模型，实现了其正向的计算过程和整个模型的训练过程。|
-
-
-### Language Transformer Model
-
-| Title | Notebooks | 说明 |
-| :---: | :---: | --- |
-| BERT | [bert.ipynb](./models/bert.ipynb) | 深入分析Bert模型的各个层和算子的实现细节 |
-| GPT2 | [gpt2.ipynb](./models/gpt2.ipynb) | 解析了GPT2模型的结构与计算过程 |
-| T5 | [t5.ipynb](./models/t5.ipynb) | 分析了Encoder-Deocder结构的T5模型的详细原理与计算流程 |
-| Llama | [llama.ipynb](./models/llama.ipynb) | TODO |
+| AlexNet | [alexnet.ipynb](./models/alexnet.ipynb)| TODO |
+| VGG | [vgg.ipynb](./models/convnets/vgg.ipynb)| 介绍了经典的 CNN 架构 VGG 模型，包括 VGG 的网络结构的设计特点和设计动机，并通过代码从零构建了 VGG 的网络 |
+| Googlenet | [googlenet.ipynb](./models/convnets/googlenet.ipynb)| TODO |
+| MobileNet | [mobilenet.ipynb](./models/convnets/mobilenet.ipynb)| TODO |
+| Resnet | [resnet.ipynb](./models/convnets/resnet.ipynb)| TODO |
+| DenseNet | [densenet.ipynb](./models/convnets/densenet.ipynb)| TODO |
+| EfficientNet | [efficientnet.ipynb](./models/convnets/efficientnet.ipynb)| TODO |
+| Regnet | [regnet.ipynb](./models/convnets/regnet.ipynb)| TODO |
+| MLPMixer | [mlpmixer.ipynb](./models/convnets/mlpmixer.ipynb)| 通过代码实现 MixerBlock，展示了如何通过只使用 MLP 来替换 SelfAttention 和 Conv 实现图像分类上的高效的模型结构 |
+| ConvMixer 架构实现| [conv_mixer.ipynb](./models/convnets/conv_mixer.ipynb) | 实现了 ConvMixer 的模型结构，展示了在一个 patch 化的输入上进行 depth-wise 的卷积以及 1x1 卷积的一种模块设计 |
+| ConvNext| [convnext.ipynb](./models/convnets/convnext.ipynb) | 实现了 ConvNext 中核心的 ConvNeXtBlock，展示了如何通过 7x7 的 Depthwise Conv 和 Pointwise Conv 来模拟 Transformer Block 结构 |
 
 
 ### Vision Trasnformer Model
+
+[近两年有哪些ViT(Vision Transformer)的改进算法？ - 盘子正的回答 - 知乎](https://www.zhihu.com/question/538049269/answer/2532582294) 
 
 | Title | Notebooks | 说明 |
 | :---: | :---: | --- |
@@ -69,6 +60,25 @@ A hands-on repository dedicated to building modern deep learning layers, models 
 | BEiT | [beit.ipynb](./models/beit.ipynb) | TODO |
 | DINO | [dino.ipynb](./models/dino.ipynb) | TODO |
 | MobileViT | [mobilevit.ipynb](./models/mobilevit.ipynb) | TODO |
+
+
+### Recurrent Model and Seq2Seq Model
+
+| Title | Notebooks | 说明 |
+| :---: | :---: | --- |
+| RNN 实现 | [simple_rnn.ipynb](./models/simple_rnn.ipynb), [lstm.ipynb](./models/lstm.ipynb),[gru.ipynb](./models/gru.ipynb) | 分别实现了 SimpleRNN、LSTM、GRU的单 Cell 以及多层双向网络的实现。 |
+| Transformer 架构实现 | [Transformer.ipynb](./models/transformer.ipynb)| 从零开始实现了 Token Embedding、位置编码、多头注意力模块等，并实现和验证了 EncodeLayer 以及 DecodeLayer 中的计算细节，比如 Padding mask 和 casual mask 的计算，在推理时自回归式的进行生成等 |
+| 使用 Seq2Seq 模型来进行机器翻译 | [seq2seq.ipynb](./models/seq2seq.ipynb) | 演示了机器翻译数据集的预处理过程，通过 torch 中对于 Transformer 架构的支持，构建了一个 6 层的 Enocer-Decoder 架构的模型，实现了其正向的计算过程和整个模型的训练过程。|
+
+
+### Text Transformer Model
+
+| Title | Notebooks | 说明 |
+| :---: | :---: | --- |
+| BERT | [bert.ipynb](./models/bert.ipynb) | 深入分析Bert模型的各个层和算子的实现细节 |
+| GPT2 | [gpt2.ipynb](./models/gpt2.ipynb) | 解析了GPT2模型的结构与计算过程 |
+| T5 | [t5.ipynb](./models/t5.ipynb) | 分析了Encoder-Deocder结构的T5模型的详细原理与计算流程 |
+| Llama | [llama.ipynb](./models/llama.ipynb) | TODO |
 
 
 ## CV Tasks
