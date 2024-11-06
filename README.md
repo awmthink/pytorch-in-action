@@ -4,13 +4,13 @@ A hands-on repository dedicated to building modern deep learning layers, models 
 
 ## Pytorch Basics
 
-| Title | Notebooks | 说明 |
-|:---:|:---:|---|
-| Tensor | [tensor.ipynb](./pytorch-basics/tensor.ipynb) | 介绍了pytorch中多维数组`Tensor`的基本使用，包括了它的属性、创建方法以及它支持的常见的运算 |
-| Automatic Differentiation | [autograd.ipynb](./pytorch-basics/autograd.ipynb)     | 介绍了Pytorch中强大的自动微分机制，并尝试剖析其中背后的机制 |
-| Dataset and Dataloader | [data-loading.ipynb](./pytorch-basics/data-loading.ipynb)| 介绍了Pytorch中进行数据读取的接口以及自定义扩展的方法，从源码的角色分析了 Dataloader 的运作机制 |
-| Modules | [modules.ipynb](./pytorch-basics/modules.ipynb) | 介绍了定义深度学习中层、块、模型的基础 类型Module的基本使用方法，并从源码角度分析了 Module 模块背后对于状态成员以及子 Module 的遍历机制 |
-| Save and Load | [save-and-load.ipynb](./pytorch-basics/save-and-load.ipynb)| 介绍了pytorch中数据、模型、优化器等进行序列化保存与加载的机制  |
+| Notebooks | 说明 |
+|:---:| ---|
+| [Tensor](./pytorch-basics/tensor.ipynb)| 介绍了pytorch中多维数组`Tensor`的基本使用，包括了它的属性、创建方法以及它支持的常见的运算 |
+| [Automatic Differentiation](./pytorch-basics/autograd.ipynb) | 介绍了Pytorch中强大的自动微分机制，并尝试剖析其中背后的机制 |
+| [Dataset and Dataloader](./pytorch-basics/data-loading.ipynb)| 介绍了Pytorch中进行数据读取的接口以及自定义扩展的方法，从源码的角色分析了 Dataloader 的运作机制 |
+| [Modules](./pytorch-basics/modules.ipynb) | 介绍了定义深度学习中层、块、模型的基础 类型Module的基本使用方法，并从源码角度分析了 Module 模块背后对于状态成员以及子 Module 的遍历机制 |
+| [Save and Load](./pytorch-basics/save-and-load.ipynb)| 介绍了pytorch中数据、模型、优化器等进行序列化保存与加载的机制  |
 
 
 ## Pytorch Advanced
@@ -27,23 +27,21 @@ A hands-on repository dedicated to building modern deep learning layers, models 
 
 ## Models
 
-
 ### ConvNets & MLP
 
-| Title | Notebooks | 说明 |
-| :---: | :---: | --- |
-| Convolution实现 | [convolution.ipynb](./models/convolution.ipynb) | 从零开始分别实现了单通道卷积、多输入输出通道卷积、以及各种其他高效实现方案，包括 im2col 等，同时通过代码演示了转置卷积的实现原理以及卷积的反向传播实现原理。 |
-| AlexNet | [alexnet.ipynb](./models/alexnet.ipynb)| TODO |
-| VGG | [vgg.ipynb](./models/convnets/vgg.ipynb)| 介绍了经典的 CNN 架构 VGG 模型，包括 VGG 的网络结构的设计特点和设计动机，并通过代码从零构建了 VGG 的网络 |
-| Googlenet | [googlenet.ipynb](./models/convnets/googlenet.ipynb)| TODO |
-| MobileNet | [mobilenet.ipynb](./models/convnets/mobilenet.ipynb)| TODO |
-| Resnet | [resnet.ipynb](./models/convnets/resnet.ipynb)| TODO |
-| DenseNet | [densenet.ipynb](./models/convnets/densenet.ipynb)| TODO |
-| EfficientNet | [efficientnet.ipynb](./models/convnets/efficientnet.ipynb)| TODO |
-| Regnet | [regnet.ipynb](./models/convnets/regnet.ipynb)| TODO |
-| MLPMixer | [mlpmixer.ipynb](./models/convnets/mlpmixer.ipynb)| 通过代码实现 MixerBlock，展示了如何通过只使用 MLP 来替换 SelfAttention 和 Conv 实现图像分类上的高效的模型结构 |
-| ConvMixer 架构实现| [conv_mixer.ipynb](./models/convnets/conv_mixer.ipynb) | 实现了 ConvMixer 的模型结构，展示了在一个 patch 化的输入上进行 depth-wise 的卷积以及 1x1 卷积的一种模块设计 |
-| ConvNext| [convnext.ipynb](./models/convnets/convnext.ipynb) | 实现了 ConvNext 中核心的 ConvNeXtBlock，展示了如何通过 7x7 的 Depthwise Conv 和 Pointwise Conv 来模拟 Transformer Block 结构 |
+| Notebooks | 说明 |
+| :---: | --- |
+| [Convolution实现](./nnlayers/convolution.ipynb) | 从零开始分别实现了单通道卷积、多输入输出通道卷积、以及各种其他高效实现方案，包括 im2col 等，同时通过代码演示了转置卷积的实现原理以及卷积的反向传播实现原理。 |
+| [VGG](./models/convnets/VGG.ipynb)  | 介绍了经典的 CNN 架构 VGG 模型，包括 VGG 的网络结构的设计特点和设计动机，并通过代码从零构建了 VGG 的网络 |
+| [GoogLeNet](./models/convnets/GoogLeNet.ipynb)| 介绍了经典的 Inception 构架的模型，从零实现了 Inception 模块和完整的 GoogLeNet 网络 |
+| [MobileNet](./models/convnets/MobileNet.ipynb)| 介绍了面向移动设备的轻量级卷积网络架构 MobileNet，介绍了其核心的深度可分离卷积的实现思路，并从零实现了整个 MobileNetV1 的架构 |
+| [ResNet](./models/convnets/ResNet.ipynb)| 介绍了 CNN 的最具有代表性的网络结构 ResNet，并从零开始逐步构建起一个完整的 ResNet34的结构 |
+| [DenseNet](./models/convnets/DenseNet.ipynb)| TODO |
+| [EfficientNet](./models/convnets/efficientnet.ipynb)| TODO |
+| [RegNet](./models/convnets/RegNet.ipynb)| TODO |
+| [MLPMixer](./models/convnets/MLPMixer.ipynb)| 通过代码实现 MixerBlock，展示了如何通过只使用 MLP 来替换 SelfAttention 和 Conv 实现图像分类上的高效的模型结构 |
+| [ConvMixer](./models/convnets/ConvMixer.ipynb) | 实现了 ConvMixer 的模型结构，展示了在一个 patch 化的输入上进行 depth-wise 的卷积以及 1x1 卷积的一种模块设计 |
+| [ConvNext](./models/convnets/ConvNeXt.ipynb) | 实现了 ConvNext 中核心的 ConvNeXtBlock，展示了如何通过 7x7 的 Depthwise Conv 和 Pointwise Conv 来模拟 Transformer Block 结构 |
 
 
 ### Vision Trasnformer Model
@@ -94,4 +92,3 @@ A hands-on repository dedicated to building modern deep learning layers, models 
 | Tokenizer  | [Tokenizer](./nlp-tasks/tokenizer.ipynb)    | 介绍了Tokenizer的详细功能 |
 | DistillBert | [DistillBert](./nlp-tasks/distilbert_cls.ipynb)| 分析DistillBert模型的结构与前向过程，并使用 DistillBert来微调一个文本分类模型 |
 | 文本分类Finetune流程 | [Finetune](./nlp-tasks/text_cls_finetune.ipynb)| 基于小型BERT模型rbt3的文本分类的完整Finetune流程 |
-

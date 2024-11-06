@@ -16,7 +16,10 @@ A hands-on repository dedicated to building modern deep learning layers, models 
    :caption: ConvNets
    :maxdepth: 1
 
-   VGG <models/convnets/vgg>
-   ConvNeXt <models/convnets/convnext>
-   MLPMixer <models/convnets/mlpmixer>
-   ConvMixer <models/convnets/convmixer>
+   VGG <models/convnets/VGG>
+   GoogLeNet <models/convnets/GoogLeNet>
+   ResNet <models/convnets/ResNet>
+   MobileNet <models/convnets/MobileNet>
+   ConvNeXt <models/convnets/ConvNeXt>
+   MLPMixer <models/convnets/MLPMixer>
+   ConvMixer <models/convnets/ConvMixer>
