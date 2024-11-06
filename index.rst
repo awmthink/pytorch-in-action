@@ -1,4 +1,6 @@
-# Pytorch In Action
+====================
+Pytorch In Action
+====================
 
 A hands-on repository dedicated to building modern deep learning layers, models and tasks from scratch using PyTorch.
 
