@@ -9,7 +9,7 @@ A hands-on repository dedicated to building modern deep learning layers, models 
    :maxdepth: 1
 
    Tensors <pytorch-basics/Tensors>
-   Automatic Differentiation <pytorch-basics/autograd>
+   Automatic Differentiation <pytorch-basics/AutoGrad>
    Dataset and Dataloader <pytorch-basics/data-loading>
    Modules <pytorch-basics/modules>
    Save and Load <pytorch-basics/save-and-load>
