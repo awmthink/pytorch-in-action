@@ -10,9 +10,9 @@ A hands-on repository dedicated to building modern deep learning layers, models 
 
    Tensors <pytorch-basics/Tensors>
    Automatic Differentiation <pytorch-basics/AutoGrad>
-   Dataset and Dataloader <pytorch-basics/data-loading>
-   Modules <pytorch-basics/modules>
-   Save and Load <pytorch-basics/save-and-load>
+   Modules <pytorch-basics/Modules>
+   Dataset and Dataloader <pytorch-basics/DataLoading>
+   Save and Load <pytorch-basics/SaveAndLoad>
 
 .. toctree::
    :caption: ConvNets
