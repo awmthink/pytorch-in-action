@@ -2,10 +2,25 @@
     max-width: 1200px !important;
 }
 
+/* 设置文档中的图片可以居中显示*/
 .wy-nav-content-img {
     display: flex;
     flex-direction: column;
     align-items: center;
     justify-content: center;
     text-align: center;
+}
+
+/* 设置 notebook 输出的图片可以居中显示*/
+.output_area img {
+    display: block;
+    margin: 0 auto !important;
+}
+
+/* 设置 notebook 输出的内容可以自动换行 */
+.rst-content div[class^=highlight] pre {
+    white-space: pre-wrap !important;
+    word-wrap: break-word !important;
+    overflow: visible !important;
+    max-width: 100% !important;
 }
