@@ -25,3 +25,11 @@ A hands-on repository dedicated to building modern deep learning layers, models 
    ConvNeXt <models/convnets/ConvNeXt>
    MLPMixer <models/convnets/MLPMixer>
    ConvMixer <models/convnets/ConvMixer>
+
+
+.. toctree::
+   :caption: Compute Vision Tasks
+   :maxdepth: 1
+
+   COCO Dataset <cv_tasks/object_detection/coco_dataset>
+   YOLO  <cv_tasks/object_detection/yolo>

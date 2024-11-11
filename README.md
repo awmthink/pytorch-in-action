@@ -17,7 +17,6 @@ A hands-on repository dedicated to building modern deep learning layers, models 
 
 | Title | Notebooks | 说明 |
 |:---:|:---:|---|
-| Finetune | [Finetune](./pytorch-advanced/06_Finetune.ipynb) | 介绍了使用一些预训练好的模型在下游任务上进行微调的基本流程 |
 | Distributed | [Distributed](./pytorch-advanced/07_Distributed.ipynb)| 介绍了Pytorch中分布式训练相关的功能支持，重点介绍了其中的分布式数据并行的原理 |
 | Tensorboard | [Tensorboard](./pytorch-advanced/08_Tensorboard.ipynb)| 介绍了使用TensorBoard来记录训练过程中的一些Metrics |
 | Auto Mixture Precision | [AutoMixPrecision](./pytorch-advanced/09_AutoMixPrecision.ipynb)| 介绍了如何开启自动混合精度来加速模型的训练 |
@@ -86,9 +85,10 @@ A hands-on repository dedicated to building modern deep learning layers, models 
 
 ## CV Tasks
 
-| Title | Notebooks | 说明 |
-|:---:|:---:|---|
-| ImageNet 训练 | [ImageNet](./imagenet/README.md) | 介绍了一个完整的Imagenet上进行图像分类的训练代码，包括了: 快照保存与恢复，多机多卡数据并行等功能、LR Scheduler等 |
+| Notebooks | 说明 |
+|:---:|---|
+| [COCO 数据集介绍](./cv-tasks/object_detection/coco_dataset.ipynb)  | 介绍了 COCO 数据集的背景、标注格式等，并用代码演示了如何通过自定义数据集来加载 COCO 检测数据集 |
+| [YOLO 目标检测](./cv-tasks/object_detection/yolo.ipynb)  | 介绍了经典的目标检测算法框架 YOLO 系列，从 YOLOV1 开始，介绍了 YOLO 系列发展。 |
 
 ## NLP Tasks 
 
