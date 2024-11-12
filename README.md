@@ -56,16 +56,18 @@ A hands-on repository dedicated to building modern deep learning layers, models 
 
 [近两年有哪些ViT(Vision Transformer)的改进算法？ - 盘子正的回答 - 知乎](https://www.zhihu.com/question/538049269/answer/2532582294) 
 
-| Title | Notebooks | 说明 |
-| :---: | :---: | --- |
-| Vision Transformer| [vit.ipynb](./models/vit.ipynb) | 重点实现了 ViT 架构中 PatchEmbedding 的部分 |
-| Data-Efficient ViT (DeiT) | [deit.ipynb](./models/deit.ipynb) | TODO |
-| Swin Transformer| [swin.ipynb](./models/swin.ipynb) | 实现了 SwinTransformer 的模型结构，从零开始实现了 PatchEmbedding、窗口化的自注意力机制、Shiftd Windows 机制、PathMerging 等 |
-| DEtection TRansfomrer | [detr.ipynb](./models/detr.ipynb) | TODO |
-| Masked AutoEncoder| [mae.ipynb](./models/mae.ipynb) | 从零实现了 MAE 整个模型中的各个关键部分，尤其是对于图像的预处理部分，如何进行 Random Mask |
-| BEiT | [beit.ipynb](./models/beit.ipynb) | TODO |
-| DINO | [dino.ipynb](./models/dino.ipynb) | TODO |
-| MobileViT | [mobilevit.ipynb](./models/mobilevit.ipynb) | TODO |
+| Notebooks | 说明 |
+| :---: | --- |
+| [Vision Transformer](./models/vision-transformers/ViT.ipynb) | 重点实现了 ViT 架构中 PatchEmbedding 的部分 |
+| [Masked AutoEncoder](./models/vision-transformers/MAE.ipynb) | 从零实现了 MAE 整个模型中的各个关键部分，尤其是对于图像的预处理部分，如何进行 Random Mask |
+| [Swin Transformer](./models/vision-transformers/Swin.ipynb) | 实现了 SwinTransformer 的模型结构，从零开始实现了 PatchEmbedding、窗口化的自注意力机制、Shiftd Windows 机制、PathMerging 等 |
+| [CvT: Convolutional vision Transformer](./models/vision-transformers/CvT.ipynb) | TODO |
+| [DiNAT: Dilated NAT](./models/vision-transformers/DiNAT.ipynb) | TODO |
+| [DEtection TRansfomrer](./models/vision-transformers/DETR.ipynb) | TODO |
+| [MobileViT](./models/vision-transformers/MobileViT.ipynb) | TODO |
+| [DeiT: Data-Efficient ViT](./models/vision-transformers/DeiT.ipynb) | TODO |
+| [BEiT](./models/vision-transformers/BEiT.ipynb) | TODO |
+| [DINO](./models/vision-transformers/DINO.ipynb) | TODO |
 
 
 ### Text Transformer Model

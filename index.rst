@@ -28,6 +28,19 @@ A hands-on repository dedicated to building modern deep learning layers, models 
 
 
 .. toctree::
+   :caption: Vision Trasnformer
+   :maxdepth: 1
+
+   ViT：VisionTrasnformer <models/vision-transformers/ViT.ipynb>
+   MAE: Masked AutoEncoder <models/vision-transformers/MAE.ipynb>
+   SwinTrasnformer <models/vision-transformers/Swin.ipynb>
+   CvT: Convolutional vision Transformer <models/vision-transformers/CvT.ipynb>
+   DiNAT: Dilated Neigborhood Attention Transformer <models/vision-transformers/DiNAT.ipynb>
+   MobileViT <models/vision-transformers/MobileViT.ipynb>
+   DETR: DEtection TRansformer <models/vision-transformers/DETR.ipynb>
+
+
+.. toctree::
    :caption: Compute Vision Tasks
    :maxdepth: 1
 
