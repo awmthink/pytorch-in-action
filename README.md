@@ -58,7 +58,7 @@ A hands-on repository dedicated to building modern deep learning layers, models 
 
 | Notebooks | 说明 |
 | :---: | --- |
-| [Vision Transformer](./models/vision-transformers/ViT.ipynb) | 重点实现了 ViT 架构中 PatchEmbedding 的部分 |
+| [Vision Transformer](./models/vision-transformers/ViT.ipynb) | 重点实现了 ViT 架构中 PatchEmbedding 的部分，并介绍了当输入分辨率与预训练模型不一致时，如何对位置编码进行插值 |
 | [Masked AutoEncoder](./models/vision-transformers/MAE.ipynb) | 从零实现了 MAE 整个模型中的各个关键部分，尤其是对于图像的预处理部分，如何进行 Random Mask |
 | [Swin Transformer](./models/vision-transformers/Swin.ipynb) | 实现了 SwinTransformer 的模型结构，从零开始实现了 PatchEmbedding、窗口化的自注意力机制、Shiftd Windows 机制、PathMerging 等 |
 | [CvT: Convolutional vision Transformer](./models/vision-transformers/CvT.ipynb) | TODO |
