@@ -38,6 +38,7 @@ A hands-on repository dedicated to building modern deep learning layers, models 
    DiNAT: Dilated Neigborhood Attention Transformer <models/vision-transformers/DiNAT.ipynb>
    MobileViT <models/vision-transformers/MobileViT.ipynb>
    DETR: DEtection TRansformer <models/vision-transformers/DETR.ipynb>
+   MaskFormer <models/vision-transformers/MaskFormer.ipynb>
 
 
 .. toctree::
