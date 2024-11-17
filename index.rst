@@ -15,6 +15,12 @@ A hands-on repository dedicated to building modern deep learning layers, models 
    Save and Load <pytorch-basics/SaveAndLoad>
 
 .. toctree::
+   :caption: Pytorch Advanced
+   :maxdepth: 1
+
+   Distributed Training <pytorch-advanced/Distributed>
+
+.. toctree::
    :caption: ConvNets
    :maxdepth: 1
 
