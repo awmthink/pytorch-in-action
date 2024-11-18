@@ -61,3 +61,7 @@ A hands-on repository dedicated to building modern deep learning layers, models 
    :maxdepth: 1
 
    Vector Add <triton/vector-add>
+   Fused Softmax <triton/fused-softmax>
+   Matrix Multiplication <triton/matrix-multiplication>
+   Low Memory Dropout <triton/low-memory-dropout>
+   LayerNorm <triton/layer-norm>
