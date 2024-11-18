@@ -54,3 +54,10 @@ A hands-on repository dedicated to building modern deep learning layers, models 
 
    COCO Dataset <cv_tasks/object_detection/coco_dataset>
    YOLO  <cv_tasks/object_detection/yolo>
+
+
+.. toctree::
+   :caption: OpenAI Triton Kernels
+   :maxdepth: 1
+
+   Vector Add <triton/vector-add>
