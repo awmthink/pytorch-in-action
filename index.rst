@@ -52,10 +52,12 @@ A hands-on repository dedicated to building modern deep learning layers, models 
    :caption: Compute Vision Tasks
    :maxdepth: 1
 
-   COCO Dataset <cv-tasks/object_detection/coco_dataset>
+   COCO Dataset <cv-tasks/datasets/coco>
+   PascalVOC Dataset <cv-tasks/datasets/pascal_voc>
    YOLO  <cv-tasks/object_detection/yolo>
    Transfer Learning ViT Image Classifiction <cv-tasks/classification/transfer-learning-image-classification>
-   LoRAFinetning Vision Transformer <cv-tasks/classification/LoRA-Image-Classification>
+   LoRA Fine-tuning Vision Transformer <cv-tasks/classification/LoRA-Image-Classification>
+   Fine-Tuning Multilable Image Classification <cv-tasks/classification/fine-tuning-multilabel-image-classification>
 
 
 .. toctree::
