@@ -58,6 +58,7 @@ A hands-on repository dedicated to building modern deep learning layers, models 
    Transfer Learning ViT Image Classifiction <cv-tasks/classification/transfer-learning-image-classification>
    LoRA Fine-tuning Vision Transformer <cv-tasks/classification/LoRA-Image-Classification>
    Fine-Tuning Multilable Image Classification <cv-tasks/classification/fine-tuning-multilabel-image-classification>
+   Knowledge Disstillation on ViT Image Classification <cv-tasks/KnowledgeDistillation>
 
 
 .. toctree::
