@@ -1,0 +1,14 @@
+training:
+  output_dir: "logs"
+  learning_rate: 0.1
+  train_batch_size_per_device: 64
+  eval_batch_size_per_device: 64
+  gradient_accumulation_steps: 1
+  weight_decay: 1e-4
+  momentum: 0.9
+  num_train_epochs: 10
+  logging_steps: 10
+  eval_steps: 50
+  save_steps: 100
+  dataloader_num_workers: 4
+  dataloader_pin_memory: true

@@ -1,0 +1,254 @@
+import os
+from pathlib import Path
+from dataclasses import dataclass
+
+import torch
+from torch import nn
+from torch import optim
+from torch.optim.lr_scheduler import StepLR, LRScheduler
+from torch.utils.data import Dataset, DataLoader, random_split
+import torchvision.transforms as T
+
+from PIL import Image
+import simple_parsing
+from timm import create_model
+
+
+class ImageNetDataset(Dataset):
+    def __init__(self, data_root: str, split: str = "train", transform=None):
+        valid_splits = ["train", "val"]
+        if split not in valid_splits:
+            raise ValueError(f"Invalid split: {split}. Choose from {valid_splits}.")
+
+        self.split = split
+        self.transform = transform
+        self.image_root = os.path.join(data_root, split)
+
+        # Load meta data
+        meta_file_path = os.path.join(data_root, f"meta/{split}.txt")
+        self.img_lst, self.labels = self._load_meta(meta_file_path)
+
+    def _load_meta(self, meta_file_path):
+        """Helper function to load image paths and labels from meta file."""
+        with open(meta_file_path, "r", encoding="utf-8") as file:
+            data = [line.strip().split(" ") for line in file.readlines()]
+
+        img_lst, labels = zip(*data)
+        labels = list(map(int, labels))
+        return img_lst, labels
+
+    def __getitem__(self, index):
+        """Retrieve the image and its label for a given index."""
+        image_path = os.path.join(self.image_root, self.img_lst[index])
+        image = Image.open(image_path).convert("RGB")
+
+        if self.transform:
+            image = self.transform(image)
+
+        label = torch.tensor(self.labels[index], dtype=torch.int64)
+        return image, label
+
+    def __len__(self):
+        """Return the number of images in the dataset."""
+        return len(self.img_lst)
+
+
+def load_imagenet_datasets(data_root):
+    normalize = T.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
+    train_transform = T.Compose(
+        [
+            T.RandomResizedCrop(224),
+            T.RandomHorizontalFlip(),
+            T.ToTensor(),
+            normalize,
+        ]
+    )
+    train_data = ImageNetDataset(data_root, split="train", transform=train_transform)
+
+    val_transform = T.Compose(
+        [
+            T.Resize(256),
+            T.CenterCrop(224),
+            T.ToTensor(),
+            normalize,
+        ]
+    )
+    val_data = ImageNetDataset(data_root, split="val", transform=val_transform)
+
+    return {"train": train_data, "val": val_data}
+
+
+def compute_topk_matches(logits, labels, k):
+    _, preds = torch.topk(logits, k, dim=-1)
+    return (preds == labels.unsqueeze(-1)).sum().item()
+
+
+@torch.inference_mode()
+def evaluate(model, val_loader, criterion, device):
+    top1_num_matches = 0
+    top5_num_matches = 0
+    total_loss = 0.0
+
+    for batch_data in val_loader:
+        input_tensors, labels = batch_data
+        input_tensors = input_tensors.to(device=device)
+        labels = labels.to(device=device)
+
+        logits = model(input_tensors)
+        loss = criterion(logits, labels)
+
+        total_loss += loss.item()
+        top1_num_matches += compute_topk_matches(logits, labels, k=1)
+        top5_num_matches += compute_topk_matches(logits, labels, k=5)
+
+    return {
+        "loss": total_loss / len(val_loader),
+        "accuracy@top1": top1_num_matches / len(val_loader.dataset),
+        "accuracy@top5": top5_num_matches / len(val_loader.dataset),
+    }
+
+
+@dataclass
+class TrainingArguments:
+    output_dir: str = "logs"
+    learning_rate: float = 0.1
+    train_batch_size_per_device: int = 8
+    eval_batch_size_per_device: int = 8
+    gradient_accumulation_steps: int = 1
+    weight_decay: float = 0
+    momentum: float = 0.9
+    num_train_epochs: int = 3
+    logging_steps: int = 500
+    eval_steps: int = None
+    save_steps: int = None
+    dataloader_num_workers: int = 0
+    dataloader_pin_memory: bool = False
+
+
+def train(
+    model: nn.Module,
+    train_loader: DataLoader,
+    val_loader: DataLoader,
+    criterion: nn.Module,
+    optimizer: optim.Optimizer,
+    lr_scheduler: LRScheduler,
+    training_args: TrainingArguments,
+    device: torch.device,
+) -> None:
+    global_steps = 0
+    total_steps = training_args.num_train_epochs * len(train_loader)
+    for i in range(1, training_args.num_train_epochs + 1):
+        for batch_data in train_loader:
+            global_steps += 1
+
+            input_tensors, labels = batch_data
+            input_tensors = input_tensors.to(device=device)
+            labels = labels.to(device=device)
+
+            logits = model(input_tensors)
+            loss = criterion(logits, labels)
+            loss.backward()
+
+            optimizer.step()
+            optimizer.zero_grad()
+
+            if global_steps % training_args.logging_steps == 0:
+                print(
+                    f"epoch {i} / {training_args.num_train_epochs}, "
+                    f"steps: {global_steps} / {total_steps}, "
+                    f"training loss: {loss.item():.4f}"
+                )
+
+            if (
+                training_args.eval_steps is not None
+                and global_steps % training_args.eval_steps == 0
+            ):
+                eval_metrics = evaluate(model, val_loader, criterion, device=device)
+                print(
+                    f"Epoch {i} / {training_args.num_train_epochs}, "
+                    f"evaluation loss: {eval_metrics['loss']}, "
+                    f"accuracy@top1: {eval_metrics['accuracy@top1']}, "
+                    f"accuracy@top5: {eval_metrics['accuracy@top5']}"
+                )
+
+            if (
+                training_args.save_steps is not None
+                and global_steps % training_args.save_steps == 0
+            ):
+                save_dir = Path(f"{training_args.output_dir}/checkpoint")
+                save_dir.mkdir(parents=True, exist_ok=True)
+                torch.save(model.state_dict(), f"{save_dir}/model.pt")
+                torch.save(optimizer.state_dict(), f"{save_dir}/optimizer.pt")
+        lr_scheduler.step()
+
+
+def main():
+    parser = simple_parsing.ArgumentParser(
+        "Image Classification Trainer", add_config_path_arg=True
+    )
+    parser.add_argument("model_name", type=str, metavar="MODEL_NAME", help="model name")
+    parser.add_argument(
+        "data_root",
+        type=str,
+        metavar="DATA_PATH",
+        help="dataset root directory path",
+    )
+    parser.add_arguments(TrainingArguments, dest="training")
+    args = parser.parse_args()
+    training_args = args.training
+
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+
+    # build data
+    datasets = load_imagenet_datasets(args.data_root)
+    train_data = datasets["train"]
+    val_data = datasets["val"]
+    small_val_data = random_split(val_data, lengths=[0.2, 0.8])[0]
+
+    train_loader = DataLoader(
+        train_data,
+        training_args.train_batch_size_per_device,
+        shuffle=True,
+        num_workers=training_args.dataloader_num_workers,
+        pin_memory=training_args.dataloader_pin_memory,
+    )
+
+    val_loader = DataLoader(
+        small_val_data,
+        training_args.eval_batch_size_per_device,
+        shuffle=False,
+        num_workers=training_args.dataloader_num_workers,
+        pin_memory=training_args.dataloader_pin_memory,
+    )
+
+    # build model
+    model = create_model(args.model_name, pretrained=False)
+    model = model.to(device=device)
+
+    # build optimizer
+    optimizer = optim.SGD(
+        model.parameters(),
+        lr=training_args.learning_rate,
+        momentum=training_args.momentum,
+        weight_decay=training_args.weight_decay,
+    )
+    lr_scheduler = StepLR(optimizer, step_size=30, gamma=0.1)
+
+    # build criterion
+    criterion = nn.CrossEntropyLoss()
+
+    # start train
+    train(
+        model,
+        train_loader,
+        val_loader,
+        criterion,
+        optimizer,
+        lr_scheduler,
+        training_args,
+        device,
+    )
+
+
+if __name__ == "__main__":
+    main()
