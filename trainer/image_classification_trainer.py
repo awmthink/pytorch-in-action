@@ -1,4 +1,8 @@
 import os
+import sys
+import json
+import random
+import logging
 from pathlib import Path
 from dataclasses import dataclass
 
@@ -9,9 +13,12 @@ from torch.optim.lr_scheduler import StepLR, LRScheduler
 from torch.utils.data import Dataset, DataLoader, random_split
 import torchvision.transforms as T
 
+import numpy as np
 from PIL import Image
 import simple_parsing
 from timm import create_model
+
+logger = logging.getLogger(__name__)
 
 
 class ImageNetDataset(Dataset):
@@ -109,8 +116,19 @@ def evaluate(model, val_loader, criterion, device):
 
 
 @dataclass
+class ModelArguments:
+    name: str = "resnet50"
+    pretrained: bool = False
+
+
+@dataclass
+class DatasetArguments:
+    data_root: str
+
+
+@dataclass
 class TrainingArguments:
-    output_dir: str = "logs"
+    output_dir: str
     learning_rate: float = 0.1
     train_batch_size_per_device: int = 8
     eval_batch_size_per_device: int = 8
@@ -121,8 +139,49 @@ class TrainingArguments:
     logging_steps: int = 500
     eval_steps: int = None
     save_steps: int = None
+    save_safetensors: bool = False
     dataloader_num_workers: int = 0
     dataloader_pin_memory: bool = False
+
+
+def save_checkpoints(
+    global_steps, training_args, model, optimizer, lr_scheduler, loss, eval_metrics
+):
+    if training_args.save_steps is None or global_steps % training_args.save_steps != 0:
+        return
+    save_dir = Path(f"{training_args.output_dir}/checkpoints")
+    save_dir.mkdir(parents=True, exist_ok=True)
+
+    training_states = {
+        "global_steps": global_steps,
+        "traning_loss": loss.item(),
+    }
+    if eval_metrics is not None:
+        training_states["eval_metrics"] = eval_metrics
+
+    with open(f"{save_dir}/training_states.json", "w") as state_file:
+        state_file.write(json.dumps(training_states, indent=4))
+
+    if training_args.save_safetensors:
+        from safetensors.torch import save_file
+
+        save_file(model.state_dict(), f"{save_dir}/model.safetensors")
+    else:
+        torch.save(model.state_dict(), f"{save_dir}/model.pt")
+
+    torch.save(optimizer.state_dict(), f"{save_dir}/optimizer.pt")
+    torch.save(lr_scheduler.state_dict(), f"{save_dir}/scheduler.pt")
+
+    # 保存整个训练环境的随机数生成器的状态
+    # ref: huggingface transformers(v4.46.3): trainer.py#L3153
+    rng_states = {
+        "python": random.getstate(),
+        "numpy": np.random.get_state(),
+        "cpu": torch.random.get_rng_state(),
+    }
+    if torch.cuda.is_available():
+        rng_states["cuda"] = torch.cuda.get_rng_state()
+    torch.save(rng_states, f"{save_dir}/rng_state.pth")
 
 
 def train(
@@ -153,32 +212,34 @@ def train(
             optimizer.zero_grad()
 
             if global_steps % training_args.logging_steps == 0:
-                print(
-                    f"epoch {i} / {training_args.num_train_epochs}, "
+                logger.info(
+                    f"Train: epoch {i} / {training_args.num_train_epochs}, "
                     f"steps: {global_steps} / {total_steps}, "
                     f"training loss: {loss.item():.4f}"
                 )
 
+            eval_metrics = None
             if (
                 training_args.eval_steps is not None
                 and global_steps % training_args.eval_steps == 0
             ):
                 eval_metrics = evaluate(model, val_loader, criterion, device=device)
-                print(
-                    f"Epoch {i} / {training_args.num_train_epochs}, "
+                logger.info(
+                    f"Evalute: epoch {i} / {training_args.num_train_epochs}, "
                     f"evaluation loss: {eval_metrics['loss']}, "
                     f"accuracy@top1: {eval_metrics['accuracy@top1']}, "
                     f"accuracy@top5: {eval_metrics['accuracy@top5']}"
                 )
 
-            if (
-                training_args.save_steps is not None
-                and global_steps % training_args.save_steps == 0
-            ):
-                save_dir = Path(f"{training_args.output_dir}/checkpoint")
-                save_dir.mkdir(parents=True, exist_ok=True)
-                torch.save(model.state_dict(), f"{save_dir}/model.pt")
-                torch.save(optimizer.state_dict(), f"{save_dir}/optimizer.pt")
+            save_checkpoints(
+                global_steps,
+                training_args,
+                model,
+                optimizer,
+                lr_scheduler,
+                loss,
+                eval_metrics,
+            )
         lr_scheduler.step()
 
 
@@ -186,21 +247,27 @@ def main():
     parser = simple_parsing.ArgumentParser(
         "Image Classification Trainer", add_config_path_arg=True
     )
-    parser.add_argument("model_name", type=str, metavar="MODEL_NAME", help="model name")
-    parser.add_argument(
-        "data_root",
-        type=str,
-        metavar="DATA_PATH",
-        help="dataset root directory path",
-    )
     parser.add_arguments(TrainingArguments, dest="training")
+    parser.add_arguments(ModelArguments, dest="model")
+    parser.add_arguments(DatasetArguments, dest="dataset")
     args = parser.parse_args()
+
     training_args = args.training
+    model_args = args.model
+    dataset_args = args.dataset
+
+    # Setup logging
+    logging.basicConfig(
+        format="[%(name)s][%(asctime)s][%(levelname)s][%(filename)s:%(lineno)s:%(funcName)s] %(message)s",
+        datefmt="%m/%d/%Y %H:%M:%S",
+        level=logging.INFO,
+        handlers=[logging.StreamHandler(sys.stdout)],
+    )
 
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
     # build data
-    datasets = load_imagenet_datasets(args.data_root)
+    datasets = load_imagenet_datasets(dataset_args.data_root)
     train_data = datasets["train"]
     val_data = datasets["val"]
     small_val_data = random_split(val_data, lengths=[0.2, 0.8])[0]
@@ -222,7 +289,7 @@ def main():
     )
 
     # build model
-    model = create_model(args.model_name, pretrained=False)
+    model = create_model(model_args.name, pretrained=model_args.pretrained)
     model = model.to(device=device)
 
     # build optimizer
