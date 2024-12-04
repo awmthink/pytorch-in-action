@@ -116,6 +116,7 @@ lightning_logs
 checkpoints
 logs
 outputs
+runs
 
 _build
 

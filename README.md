@@ -18,7 +18,7 @@ A hands-on repository dedicated to building modern deep learning layers, models 
 | Title | Notebooks | 说明 |
 |:---:|:---:|---|
 | Distributed | [Distributed](./pytorch-advanced/Distributed.ipynb)| 介绍了Pytorch中分布式训练相关的功能支持，重点介绍了其中的分布式数据并行的原理 |
-| Tensorboard | [Tensorboard](./pytorch-advanced/08_Tensorboard.ipynb)| 介绍了使用TensorBoard来记录训练过程中的一些Metrics |
+| Tensorboard | [Tensorboard](./pytorch-advanced/Tensorboard.ipynb)| 介绍了使用TensorBoard来记录训练过程中的一些Metrics |
 | Auto Mixture Precision | [AutoMixPrecision](./pytorch-advanced/09_AutoMixPrecision.ipynb)| 介绍了如何开启自动混合精度来加速模型的训练 |
 | Pytorch Lightning | [PytorchLightning](./pytorch-advanced/10_PytorchLightning.ipynb)| 介绍了使用Pytorch Lightning来模块化我们的训练代码 |
 | Pytorch Image Models | [Timm](./timm/tutuorials.ipynb)| 介绍了如何使用 timm 库来获取主流的视觉模型以及预训练权重，我们也可以基于这些模型进行扩展 |

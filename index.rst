@@ -19,6 +19,7 @@ A hands-on repository dedicated to building modern deep learning layers, models 
    :maxdepth: 1
 
    Distributed Training <pytorch-advanced/Distributed>
+   TensorBoard <pytorch-advanced/TensorBoard>
 
 .. toctree::
    :caption: ConvNets
