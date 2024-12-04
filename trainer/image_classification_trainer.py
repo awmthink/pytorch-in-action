@@ -11,10 +11,12 @@ from torch import nn
 from torch import optim
 from torch.optim.lr_scheduler import StepLR, LRScheduler
 from torch.utils.data import Dataset, DataLoader, random_split
+from torch.utils.tensorboard.writer import SummaryWriter
 import torchvision.transforms as T
 
 import numpy as np
 from PIL import Image
+from tqdm import tqdm
 import simple_parsing
 from timm import create_model
 
@@ -96,6 +98,13 @@ def evaluate(model, val_loader, criterion, device):
     top5_num_matches = 0
     total_loss = 0.0
 
+    prediction_bar = tqdm(
+        desc="Evaluating",
+        total=len(val_loader),
+        leave=False,
+        dynamic_ncols=True,
+        unit="batch",
+    )
     for batch_data in val_loader:
         input_tensors, labels = batch_data
         input_tensors = input_tensors.to(device=device)
@@ -107,6 +116,8 @@ def evaluate(model, val_loader, criterion, device):
         total_loss += loss.item()
         top1_num_matches += compute_topk_matches(logits, labels, k=1)
         top5_num_matches += compute_topk_matches(logits, labels, k=5)
+
+        prediction_bar.update()
 
     return {
         "loss": total_loss / len(val_loader),
@@ -196,6 +207,10 @@ def train(
 ) -> None:
     global_steps = 0
     total_steps = training_args.num_train_epochs * len(train_loader)
+    writer = SummaryWriter(f"{training_args.output_dir}/tensorboard/")
+    training_bar = tqdm(total=total_steps, dynamic_ncols=True, unit="step")
+    training_bar.set_description("Training")
+
     for i in range(1, training_args.num_train_epochs + 1):
         for batch_data in train_loader:
             global_steps += 1
@@ -212,11 +227,12 @@ def train(
             optimizer.zero_grad()
 
             if global_steps % training_args.logging_steps == 0:
-                logger.info(
+                training_bar.write(
                     f"Train: epoch {i} / {training_args.num_train_epochs}, "
                     f"steps: {global_steps} / {total_steps}, "
                     f"training loss: {loss.item():.4f}"
                 )
+                writer.add_scalar("training loss", loss.item(), global_steps)
 
             eval_metrics = None
             if (
@@ -224,11 +240,20 @@ def train(
                 and global_steps % training_args.eval_steps == 0
             ):
                 eval_metrics = evaluate(model, val_loader, criterion, device=device)
-                logger.info(
+
+                training_bar.write(
                     f"Evalute: epoch {i} / {training_args.num_train_epochs}, "
                     f"evaluation loss: {eval_metrics['loss']}, "
                     f"accuracy@top1: {eval_metrics['accuracy@top1']}, "
                     f"accuracy@top5: {eval_metrics['accuracy@top5']}"
+                )
+
+                writer.add_scalar("evaluation loss", eval_metrics["loss"], global_steps)
+                writer.add_scalar(
+                    "accuracy@top1", eval_metrics["accuracy@top1"], global_steps
+                )
+                writer.add_scalar(
+                    "accuracy@top5", eval_metrics["accuracy@top5"], global_steps
                 )
 
             save_checkpoints(
@@ -240,6 +265,8 @@ def train(
                 loss,
                 eval_metrics,
             )
+            training_bar.update()
+
         lr_scheduler.step()
 
 
@@ -260,7 +287,7 @@ def main():
     logging.basicConfig(
         format="[%(name)s][%(asctime)s][%(levelname)s][%(filename)s:%(lineno)s:%(funcName)s] %(message)s",
         datefmt="%m/%d/%Y %H:%M:%S",
-        level=logging.INFO,
+        level=logging.ERROR,
         handlers=[logging.StreamHandler(sys.stdout)],
     )
 
