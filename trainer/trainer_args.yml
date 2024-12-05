@@ -7,16 +7,18 @@ dataset:
 
 training:
   output_dir: "outputs"
+  bf16: true
+  max_grad_norm: 1.0
   learning_rate: 0.1
-  train_batch_size_per_device: 64
+  train_batch_size_per_device: 32
   eval_batch_size_per_device: 64
-  gradient_accumulation_steps: 1
+  gradient_accumulation_steps: 4
   weight_decay: 1e-4
   momentum: 0.9
   num_train_epochs: 90
   logging_steps: 10
-  eval_steps: 50
-  save_steps: 200
+  eval_steps: 100
+  save_steps: 500
   save_safetensors: true
   dataloader_num_workers: 4
   dataloader_pin_memory: true

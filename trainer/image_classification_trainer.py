@@ -93,7 +93,7 @@ def compute_topk_matches(logits, labels, k):
 
 
 @torch.inference_mode()
-def evaluate(model, val_loader, criterion, device):
+def evaluate(model, val_loader, criterion, dtype, device):
     top1_num_matches = 0
     top5_num_matches = 0
     total_loss = 0.0
@@ -105,13 +105,15 @@ def evaluate(model, val_loader, criterion, device):
         dynamic_ncols=True,
         unit="batch",
     )
+    use_amp = dtype == torch.float16 or dtype == torch.bfloat16
     for batch_data in val_loader:
         input_tensors, labels = batch_data
         input_tensors = input_tensors.to(device=device)
         labels = labels.to(device=device)
 
-        logits = model(input_tensors)
-        loss = criterion(logits, labels)
+        with torch.autocast(device_type=device.type, dtype=dtype, enabled=use_amp):
+            logits = model(input_tensors)
+            loss = criterion(logits, labels)
 
         total_loss += loss.item()
         top1_num_matches += compute_topk_matches(logits, labels, k=1)
@@ -140,6 +142,9 @@ class DatasetArguments:
 @dataclass
 class TrainingArguments:
     output_dir: str
+    fp16: bool = False
+    bf16: bool = False
+    max_grad_norm: float = None
     learning_rate: float = 0.1
     train_batch_size_per_device: int = 8
     eval_batch_size_per_device: int = 8
@@ -156,10 +161,21 @@ class TrainingArguments:
 
 
 def save_checkpoints(
-    global_steps, training_args, model, optimizer, lr_scheduler, loss, eval_metrics
+    global_steps,
+    training_args,
+    model,
+    optimizer,
+    lr_scheduler,
+    grad_scalar,
+    loss,
+    eval_metrics,
 ):
-    if training_args.save_steps is None or global_steps % training_args.save_steps != 0:
+    if training_args.save_steps is None:
         return
+    save_steps = training_args.save_steps * training_args.gradient_accumulation_steps
+    if global_steps % save_steps != 0:
+        return
+
     save_dir = Path(f"{training_args.output_dir}/checkpoints")
     save_dir.mkdir(parents=True, exist_ok=True)
 
@@ -182,6 +198,7 @@ def save_checkpoints(
 
     torch.save(optimizer.state_dict(), f"{save_dir}/optimizer.pt")
     torch.save(lr_scheduler.state_dict(), f"{save_dir}/scheduler.pt")
+    torch.save(grad_scalar.state_dict(), f"{save_dir}/grad_scalar.pt")
 
     # 保存整个训练环境的随机数生成器的状态
     # ref: huggingface transformers(v4.46.3): trainer.py#L3153
@@ -196,37 +213,64 @@ def save_checkpoints(
 
 
 def train(
+    training_args: TrainingArguments,
     model: nn.Module,
     train_loader: DataLoader,
     val_loader: DataLoader,
     criterion: nn.Module,
     optimizer: optim.Optimizer,
     lr_scheduler: LRScheduler,
-    training_args: TrainingArguments,
+    grad_scaler: torch.GradScaler,
+    dtype: torch.dtype,
     device: torch.device,
 ) -> None:
+
     global_steps = 0
     total_steps = training_args.num_train_epochs * len(train_loader)
+
     writer = SummaryWriter(f"{training_args.output_dir}/tensorboard/")
     training_bar = tqdm(total=total_steps, dynamic_ncols=True, unit="step")
     training_bar.set_description("Training")
 
+    use_amp = dtype == torch.float16 or dtype == torch.bfloat16
+
     for i in range(1, training_args.num_train_epochs + 1):
-        for batch_data in train_loader:
+        for input_tensors, labels in train_loader:
             global_steps += 1
 
-            input_tensors, labels = batch_data
             input_tensors = input_tensors.to(device=device)
             labels = labels.to(device=device)
 
-            logits = model(input_tensors)
-            loss = criterion(logits, labels)
-            loss.backward()
+            with torch.autocast(device_type=device.type, dtype=dtype, enabled=use_amp):
+                logits = model(input_tensors)
+                loss = criterion(logits, labels)
+                # 缩放损失并反向传播
+                grad_scaler.scale(loss).backward()
 
-            optimizer.step()
-            optimizer.zero_grad()
+            if global_steps % training_args.gradient_accumulation_steps == 0:
+                # 进行梯度裁剪，防止出现梯度爆炸
+                if (
+                    training_args.max_grad_norm is not None
+                    and training_args.max_grad_norm > 0
+                ):
+                    grad_scaler.unscale_(optimizer)
+                    torch.nn.utils.clip_grad_norm_(
+                        model.parameters(), training_args.max_grad_norm
+                    )
+                # 更新模型参数
+                grad_scaler.step(optimizer)
+                # 更新 GradScaler
+                grad_scaler.update()
+                optimizer.zero_grad()
 
-            if global_steps % training_args.logging_steps == 0:
+            if (
+                global_steps
+                % (
+                    training_args.logging_steps
+                    * training_args.gradient_accumulation_steps
+                )
+                == 0
+            ):
                 training_bar.write(
                     f"Train: epoch {i} / {training_args.num_train_epochs}, "
                     f"steps: {global_steps} / {total_steps}, "
@@ -237,9 +281,13 @@ def train(
             eval_metrics = None
             if (
                 training_args.eval_steps is not None
-                and global_steps % training_args.eval_steps == 0
+                and global_steps
+                % (training_args.eval_steps * training_args.gradient_accumulation_steps)
+                == 0
             ):
-                eval_metrics = evaluate(model, val_loader, criterion, device=device)
+                eval_metrics = evaluate(
+                    model, val_loader, criterion, dtype=dtype, device=device
+                )
 
                 training_bar.write(
                     f"Evalute: epoch {i} / {training_args.num_train_epochs}, "
@@ -262,6 +310,7 @@ def train(
                 model,
                 optimizer,
                 lr_scheduler,
+                grad_scaler,
                 loss,
                 eval_metrics,
             )
@@ -328,18 +377,30 @@ def main():
     )
     lr_scheduler = StepLR(optimizer, step_size=30, gamma=0.1)
 
+    if training_args.fp16 and training_args.bf16:
+        raise ValueError("Both fp16 and bf16 cannot be enabled at the same time.")
+    dtype = (
+        torch.float16
+        if training_args.fp16
+        else torch.bfloat16 if training_args.bf16 else torch.float32
+    )
+    use_amp = training_args.fp16 or training_args.bf16
+    grad_scaler = torch.amp.GradScaler(enabled=use_amp)
+
     # build criterion
     criterion = nn.CrossEntropyLoss()
 
     # start train
     train(
+        training_args,
         model,
         train_loader,
         val_loader,
         criterion,
         optimizer,
         lr_scheduler,
-        training_args,
+        grad_scaler,
+        dtype,
         device,
     )
 

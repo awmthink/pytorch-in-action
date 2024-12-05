@@ -9,13 +9,12 @@
 - [x] 支持模型 checkpoint (模型参数、优化器状态、调度器状态、global_steps) 的保存，
     - [x] 支持通过参数来控制是否保存 safetensors 格式
     - [x] 仿照 HuggingFace 的实现，在 checkpoint 里保存随机数生成器的状态
-    - [ ] 支持保存多个 checkpoint，并设置 checkpoint 的保存策略（按 eval_metrics 或者 最后 N 个）
 - [x] 实验记录保存 TensorBoard
+- [x] 支持混合精度训练、梯度裁剪
+- [x] 支持梯度累积
 
 
 ## TODO
 
-- [ ] 支持混合精度训练
-- [ ] 支持梯度累积
 - [ ] 支持从检查点开始恢复训练
 

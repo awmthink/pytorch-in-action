@@ -20,6 +20,7 @@ A hands-on repository dedicated to building modern deep learning layers, models 
 
    Distributed Training <pytorch-advanced/Distributed>
    TensorBoard <pytorch-advanced/TensorBoard>
+   AutoMixPrecision <pytorch-advanced/AutoMixPrecision>
 
 .. toctree::
    :caption: ConvNets
