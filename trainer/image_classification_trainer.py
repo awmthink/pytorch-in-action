@@ -4,6 +4,7 @@ import json
 import random
 import logging
 from pathlib import Path
+from typing import Optional
 from dataclasses import dataclass
 
 import torch
@@ -62,7 +63,7 @@ class ImageNetDataset(Dataset):
         return len(self.img_lst)
 
 
-def load_imagenet_datasets(data_root):
+def prepare_datalader(dataset_args, training_args):
     normalize = T.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
     train_transform = T.Compose(
         [
@@ -72,7 +73,9 @@ def load_imagenet_datasets(data_root):
             normalize,
         ]
     )
-    train_data = ImageNetDataset(data_root, split="train", transform=train_transform)
+    train_data = ImageNetDataset(
+        dataset_args.data_root, split="train", transform=train_transform
+    )
 
     val_transform = T.Compose(
         [
@@ -82,9 +85,29 @@ def load_imagenet_datasets(data_root):
             normalize,
         ]
     )
-    val_data = ImageNetDataset(data_root, split="val", transform=val_transform)
+    val_data = ImageNetDataset(
+        dataset_args.data_root, split="val", transform=val_transform
+    )
 
-    return {"train": train_data, "val": val_data}
+    train_loader = DataLoader(
+        train_data,
+        training_args.train_batch_size_per_device,
+        shuffle=True,
+        generator=torch.Generator(),
+        num_workers=training_args.dataloader_num_workers,
+        pin_memory=training_args.dataloader_pin_memory,
+    )
+
+    small_val_data = random_split(val_data, lengths=[0.2, 0.8])[0]
+    val_loader = DataLoader(
+        small_val_data,
+        training_args.eval_batch_size_per_device,
+        shuffle=False,
+        num_workers=training_args.dataloader_num_workers,
+        pin_memory=training_args.dataloader_pin_memory,
+    )
+
+    return train_loader, val_loader
 
 
 def compute_topk_matches(logits, labels, k):
@@ -142,13 +165,14 @@ class DatasetArguments:
 @dataclass
 class TrainingArguments:
     output_dir: str
+    seed: int = None
     fp16: bool = False
     bf16: bool = False
     max_grad_norm: float = None
     learning_rate: float = 0.1
     train_batch_size_per_device: int = 8
     eval_batch_size_per_device: int = 8
-    gradient_accumulation_steps: int = 1
+    grad_accumulation_batches: int = 1
     weight_decay: float = 0
     momentum: float = 0.9
     num_train_epochs: int = 3
@@ -158,6 +182,7 @@ class TrainingArguments:
     save_safetensors: bool = False
     dataloader_num_workers: int = 0
     dataloader_pin_memory: bool = False
+    resume_from_checkpoint: str = None
 
 
 def save_checkpoints(
@@ -172,8 +197,8 @@ def save_checkpoints(
 ):
     if training_args.save_steps is None:
         return
-    save_steps = training_args.save_steps * training_args.gradient_accumulation_steps
-    if global_steps % save_steps != 0:
+
+    if global_steps % training_args.save_steps != 0:
         return
 
     save_dir = Path(f"{training_args.output_dir}/checkpoints")
@@ -187,7 +212,7 @@ def save_checkpoints(
         training_states["eval_metrics"] = eval_metrics
 
     with open(f"{save_dir}/training_states.json", "w") as state_file:
-        state_file.write(json.dumps(training_states, indent=4))
+        json.dump(training_states, state_file, indent=2)
 
     if training_args.save_safetensors:
         from safetensors.torch import save_file
@@ -212,8 +237,86 @@ def save_checkpoints(
     torch.save(rng_states, f"{save_dir}/rng_state.pth")
 
 
+def maybe_load_checkpoints(
+    training_args,
+    model,
+    optimizer: optim.Optimizer,
+    lr_scheduler,
+    grad_scaler,
+    device: torch.device,
+):
+    if training_args.resume_from_checkpoint is None:
+        return 0
+    # 如果指定了 resume 的目录，但是目录不存在，则直接从零开始训练
+    if not os.path.exists(training_args.resume_from_checkpoint):
+        return 0
+
+    logger.info(f"loading checkpoint from: {training_args.resume_from_checkpoint}")
+
+    checkpoint_root = training_args.resume_from_checkpoint
+
+    with open(f"{checkpoint_root}/training_states.json") as state_file:
+        training_states = json.load(state_file)
+        global_steps = training_states["global_steps"]
+
+    if training_args.save_safetensors:
+        from safetensors.torch import load_file
+
+        model_states = load_file(f"{checkpoint_root}/model.safetensors", device.index)
+        model.load_state_dict(model_states)
+    else:
+        model_states = torch.load(
+            f"{checkpoint_root}/model.pt", device, weights_only=True
+        )
+        model.load_state_dict(model_states)
+
+    optimizer_states = torch.load(
+        f"{checkpoint_root}/optimizer.pt", device, weights_only=True
+    )
+    optimizer.load_state_dict(optimizer_states)
+
+    scheduler_states = torch.load(
+        f"{checkpoint_root}/scheduler.pt", device, weights_only=True
+    )
+    lr_scheduler.load_state_dict(scheduler_states)
+
+    scaler_states = torch.load(
+        f"{checkpoint_root}/grad_scalar.pt", device, weights_only=True
+    )
+    grad_scaler.load_state_dict(scaler_states)
+
+    rng_states = torch.load(
+        f"{checkpoint_root}/rng_state.pth", "cpu", weights_only=False
+    )
+    random.setstate(rng_states["python"])
+    np.random.set_state(rng_states["numpy"])
+    torch.random.set_rng_state(rng_states["cpu"])
+
+    if torch.cuda.is_available():
+        torch.cuda.set_rng_state(rng_states["cuda"], device)
+
+    return global_steps
+
+
+def seed_everything(seed: Optional[int]):
+    if seed is None:
+        return
+
+    logger.info(f"Global seed set to {seed}")
+
+    random.seed(seed)
+    np.random.seed(seed)
+    torch.manual_seed(seed)
+
+    if torch.cuda.is_available():
+        torch.cuda.manual_seed_all(seed)
+        torch.backends.cudnn.deterministic = True
+        torch.backends.cudnn.benchmark = False
+
+
 def train(
     training_args: TrainingArguments,
+    global_steps,
     model: nn.Module,
     train_loader: DataLoader,
     val_loader: DataLoader,
@@ -225,18 +328,28 @@ def train(
     device: torch.device,
 ) -> None:
 
-    global_steps = 0
-    total_steps = training_args.num_train_epochs * len(train_loader)
+    ga_batches = training_args.grad_accumulation_batches
+    total_steps = training_args.num_train_epochs * len(train_loader) // ga_batches
+
+    current_batch_idx = global_steps * ga_batches
+    start_epoch = current_batch_idx // len(train_loader) + 1
+    skip_batches = current_batch_idx % len(train_loader)
 
     writer = SummaryWriter(f"{training_args.output_dir}/tensorboard/")
     training_bar = tqdm(total=total_steps, dynamic_ncols=True, unit="step")
     training_bar.set_description("Training")
+    training_bar.update(global_steps)
 
     use_amp = dtype == torch.float16 or dtype == torch.bfloat16
 
-    for i in range(1, training_args.num_train_epochs + 1):
+    for epoch in range(start_epoch, training_args.num_train_epochs + 1):
+        # 用于保证每个 epoch 的 随机种子不一样
+        train_loader.generator.manual_seed(epoch)
         for input_tensors, labels in train_loader:
-            global_steps += 1
+            if skip_batches > 0:
+                # 这里可以优化，避免掉不必要的数据加载与数据预处理的耗时
+                skip_batches -= 1
+                continue
 
             input_tensors = input_tensors.to(device=device)
             labels = labels.to(device=device)
@@ -247,32 +360,31 @@ def train(
                 # 缩放损失并反向传播
                 grad_scaler.scale(loss).backward()
 
-            if global_steps % training_args.gradient_accumulation_steps == 0:
-                # 进行梯度裁剪，防止出现梯度爆炸
-                if (
-                    training_args.max_grad_norm is not None
-                    and training_args.max_grad_norm > 0
-                ):
-                    grad_scaler.unscale_(optimizer)
-                    torch.nn.utils.clip_grad_norm_(
-                        model.parameters(), training_args.max_grad_norm
-                    )
-                # 更新模型参数
-                grad_scaler.step(optimizer)
-                # 更新 GradScaler
-                grad_scaler.update()
-                optimizer.zero_grad()
+            current_batch_idx += 1
 
+            # 未达到 AC 指定的 batch，则不进行梯度更新以及日志打印等
+            if current_batch_idx % training_args.grad_accumulation_batches != 0:
+                continue
+
+            # 进行梯度裁剪，防止出现梯度爆炸
             if (
-                global_steps
-                % (
-                    training_args.logging_steps
-                    * training_args.gradient_accumulation_steps
-                )
-                == 0
+                training_args.max_grad_norm is not None
+                and training_args.max_grad_norm > 0
             ):
+                grad_scaler.unscale_(optimizer)
+                torch.nn.utils.clip_grad_norm_(
+                    model.parameters(), training_args.max_grad_norm
+                )
+            # 更新模型参数
+            grad_scaler.step(optimizer)
+            # 更新 GradScaler
+            grad_scaler.update()
+            optimizer.zero_grad()
+            global_steps += 1
+
+            if global_steps % training_args.logging_steps == 0:
                 training_bar.write(
-                    f"Train: epoch {i} / {training_args.num_train_epochs}, "
+                    f"Train: epoch {epoch} / {training_args.num_train_epochs}, "
                     f"steps: {global_steps} / {total_steps}, "
                     f"training loss: {loss.item():.4f}"
                 )
@@ -281,16 +393,14 @@ def train(
             eval_metrics = None
             if (
                 training_args.eval_steps is not None
-                and global_steps
-                % (training_args.eval_steps * training_args.gradient_accumulation_steps)
-                == 0
+                and global_steps % training_args.eval_steps == 0
             ):
                 eval_metrics = evaluate(
                     model, val_loader, criterion, dtype=dtype, device=device
                 )
 
                 training_bar.write(
-                    f"Evalute: epoch {i} / {training_args.num_train_epochs}, "
+                    f"Evalute: epoch {epoch} / {training_args.num_train_epochs}, "
                     f"evaluation loss: {eval_metrics['loss']}, "
                     f"accuracy@top1: {eval_metrics['accuracy@top1']}, "
                     f"accuracy@top5: {eval_metrics['accuracy@top5']}"
@@ -320,6 +430,7 @@ def train(
 
 
 def main():
+    # =========  prepare arguments parser and logger =============
     parser = simple_parsing.ArgumentParser(
         "Image Classification Trainer", add_config_path_arg=True
     )
@@ -332,43 +443,23 @@ def main():
     model_args = args.model
     dataset_args = args.dataset
 
-    # Setup logging
+    seed_everything(training_args.seed)
+
+    # ========= setup logging =========
     logging.basicConfig(
         format="[%(name)s][%(asctime)s][%(levelname)s][%(filename)s:%(lineno)s:%(funcName)s] %(message)s",
         datefmt="%m/%d/%Y %H:%M:%S",
-        level=logging.ERROR,
+        level=logging.INFO,
         handlers=[logging.StreamHandler(sys.stdout)],
     )
 
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-    # build data
-    datasets = load_imagenet_datasets(dataset_args.data_root)
-    train_data = datasets["train"]
-    val_data = datasets["val"]
-    small_val_data = random_split(val_data, lengths=[0.2, 0.8])[0]
-
-    train_loader = DataLoader(
-        train_data,
-        training_args.train_batch_size_per_device,
-        shuffle=True,
-        num_workers=training_args.dataloader_num_workers,
-        pin_memory=training_args.dataloader_pin_memory,
-    )
-
-    val_loader = DataLoader(
-        small_val_data,
-        training_args.eval_batch_size_per_device,
-        shuffle=False,
-        num_workers=training_args.dataloader_num_workers,
-        pin_memory=training_args.dataloader_pin_memory,
-    )
-
-    # build model
+    # ========= build model =========
     model = create_model(model_args.name, pretrained=model_args.pretrained)
     model = model.to(device=device)
 
-    # build optimizer
+    # ========= build optimizer, scheduler, grad_scaler =========
     optimizer = optim.SGD(
         model.parameters(),
         lr=training_args.learning_rate,
@@ -387,12 +478,20 @@ def main():
     use_amp = training_args.fp16 or training_args.bf16
     grad_scaler = torch.amp.GradScaler(enabled=use_amp)
 
-    # build criterion
+    # ========= build criterion =========
     criterion = nn.CrossEntropyLoss()
+
+    # ========= maybe loading checkpoint =============
+    global_steps = maybe_load_checkpoints(
+        training_args, model, optimizer, lr_scheduler, grad_scaler, device
+    )
+    # =========  prepare dataloader =============
+    train_loader, val_loader = prepare_datalader(dataset_args, training_args)
 
     # start train
     train(
         training_args,
+        global_steps,
         model,
         train_loader,
         val_loader,
