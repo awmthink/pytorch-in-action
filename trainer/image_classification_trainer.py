@@ -10,11 +10,19 @@ from dataclasses import dataclass
 import torch
 from torch import nn
 from torch import optim
+import torch.distributed as dist
+from torch.nn.parallel import DistributedDataParallel as DDP
 from torch.optim.lr_scheduler import StepLR, LRScheduler
-from torch.utils.data import Dataset, DataLoader, random_split
 from torch.utils.tensorboard.writer import SummaryWriter
-import torchvision.transforms as T
+from torch.utils.data import (
+    Dataset,
+    DataLoader,
+    random_split,
+    RandomSampler,
+    DistributedSampler,
+)
 
+import torchvision.transforms as T
 import numpy as np
 from PIL import Image
 from tqdm import tqdm
@@ -22,6 +30,16 @@ import simple_parsing
 from timm import create_model
 
 logger = logging.getLogger(__name__)
+
+
+def get_world_size():
+    return int(os.environ.get("WORLD_SIZE", "1"))
+
+
+def is_main_process():
+    if not dist.is_initialized():
+        return True
+    return dist.get_rank() == 0
 
 
 class ImageNetDataset(Dataset):
@@ -89,45 +107,65 @@ def prepare_datalader(dataset_args, training_args):
         dataset_args.data_root, split="val", transform=val_transform
     )
 
-    train_loader = DataLoader(
-        train_data,
-        training_args.train_batch_size_per_device,
-        shuffle=True,
-        generator=torch.Generator(),
-        num_workers=training_args.dataloader_num_workers,
-        pin_memory=training_args.dataloader_pin_memory,
-    )
+    if get_world_size() > 1:
+        train_loader = DataLoader(
+            train_data,
+            training_args.train_batch_size_per_device,
+            sampler=DistributedSampler(train_data),
+            num_workers=training_args.dataloader_num_workers,
+            pin_memory=training_args.dataloader_pin_memory,
+        )
 
-    small_val_data = random_split(val_data, lengths=[0.2, 0.8])[0]
-    val_loader = DataLoader(
-        small_val_data,
-        training_args.eval_batch_size_per_device,
-        shuffle=False,
-        num_workers=training_args.dataloader_num_workers,
-        pin_memory=training_args.dataloader_pin_memory,
-    )
+        # val_data = random_split(val_data, lengths=[0.2, 0.8])[0]
+        val_loader = DataLoader(
+            val_data,
+            training_args.eval_batch_size_per_device,
+            sampler=DistributedSampler(val_data),
+            num_workers=training_args.dataloader_num_workers,
+            pin_memory=training_args.dataloader_pin_memory,
+        )
+    else:
+        train_loader = DataLoader(
+            train_data,
+            training_args.train_batch_size_per_device,
+            shuffle=True,
+            generator=torch.Generator(),
+            num_workers=training_args.dataloader_num_workers,
+            pin_memory=training_args.dataloader_pin_memory,
+        )
+
+        # val_data = random_split(val_data, lengths=[0.2, 0.8])[0]
+        val_loader = DataLoader(
+            val_data,
+            training_args.eval_batch_size_per_device,
+            shuffle=False,
+            num_workers=training_args.dataloader_num_workers,
+            pin_memory=training_args.dataloader_pin_memory,
+        )
 
     return train_loader, val_loader
 
 
 def compute_topk_matches(logits, labels, k):
     _, preds = torch.topk(logits, k, dim=-1)
-    return (preds == labels.unsqueeze(-1)).sum().item()
+    return (preds == labels.unsqueeze(-1)).sum()
 
 
 @torch.inference_mode()
 def evaluate(model, val_loader, criterion, dtype, device):
     top1_num_matches = 0
     top5_num_matches = 0
-    total_loss = 0.0
+    total_loss = torch.tensor(0.0, device=device)
 
-    prediction_bar = tqdm(
-        desc="Evaluating",
-        total=len(val_loader),
-        leave=False,
-        dynamic_ncols=True,
-        unit="batch",
-    )
+    if is_main_process():
+        prediction_bar = tqdm(
+            desc="Evaluating",
+            total=len(val_loader),
+            leave=False,
+            dynamic_ncols=True,
+            unit="batch",
+        )
+
     use_amp = dtype == torch.float16 or dtype == torch.bfloat16
     for batch_data in val_loader:
         input_tensors, labels = batch_data
@@ -138,16 +176,22 @@ def evaluate(model, val_loader, criterion, dtype, device):
             logits = model(input_tensors)
             loss = criterion(logits, labels)
 
-        total_loss += loss.item()
+        total_loss += loss
         top1_num_matches += compute_topk_matches(logits, labels, k=1)
         top5_num_matches += compute_topk_matches(logits, labels, k=5)
 
-        prediction_bar.update()
+        if is_main_process():
+            prediction_bar.update()
+
+    if get_world_size() > 1:
+        dist.all_reduce(total_loss, dist.ReduceOp.AVG)
+        dist.all_reduce(top1_num_matches)
+        dist.all_reduce(top5_num_matches)
 
     return {
-        "loss": total_loss / len(val_loader),
-        "accuracy@top1": top1_num_matches / len(val_loader.dataset),
-        "accuracy@top5": top5_num_matches / len(val_loader.dataset),
+        "loss": total_loss.item() / len(val_loader),
+        "accuracy@top1": top1_num_matches.item() / len(val_loader.dataset),
+        "accuracy@top5": top5_num_matches.item() / len(val_loader.dataset),
     }
 
 
@@ -195,6 +239,9 @@ def save_checkpoints(
     loss,
     eval_metrics,
 ):
+    if not is_main_process():
+        return
+
     if training_args.save_steps is None:
         return
 
@@ -203,6 +250,8 @@ def save_checkpoints(
 
     save_dir = Path(f"{training_args.output_dir}/checkpoints")
     save_dir.mkdir(parents=True, exist_ok=True)
+
+    # logger.info(f"Saving checkpoint to: {save_dir}")
 
     training_states = {
         "global_steps": global_steps,
@@ -213,6 +262,9 @@ def save_checkpoints(
 
     with open(f"{save_dir}/training_states.json", "w") as state_file:
         json.dump(training_states, state_file, indent=2)
+
+    if isinstance(model, DDP):
+        model = model.module
 
     if training_args.save_safetensors:
         from safetensors.torch import save_file
@@ -251,7 +303,8 @@ def maybe_load_checkpoints(
     if not os.path.exists(training_args.resume_from_checkpoint):
         return 0
 
-    logger.info(f"loading checkpoint from: {training_args.resume_from_checkpoint}")
+    if is_main_process():
+        logger.info(f"loading checkpoint from: {training_args.resume_from_checkpoint}")
 
     checkpoint_root = training_args.resume_from_checkpoint
 
@@ -302,7 +355,8 @@ def seed_everything(seed: Optional[int]):
     if seed is None:
         return
 
-    logger.info(f"Global seed set to {seed}")
+    if is_main_process():
+        logger.info(f"Global seed set to {seed}")
 
     random.seed(seed)
     np.random.seed(seed)
@@ -335,16 +389,21 @@ def train(
     start_epoch = current_batch_idx // len(train_loader) + 1
     skip_batches = current_batch_idx % len(train_loader)
 
-    writer = SummaryWriter(f"{training_args.output_dir}/tensorboard/")
-    training_bar = tqdm(total=total_steps, dynamic_ncols=True, unit="step")
-    training_bar.set_description("Training")
-    training_bar.update(global_steps)
+    if is_main_process():
+        writer = SummaryWriter(f"{training_args.output_dir}/tensorboard/")
+        training_bar = tqdm(total=total_steps, dynamic_ncols=True, unit="step")
+        training_bar.set_description("Training")
+        training_bar.update(global_steps)
 
     use_amp = dtype == torch.float16 or dtype == torch.bfloat16
 
     for epoch in range(start_epoch, training_args.num_train_epochs + 1):
         # 用于保证每个 epoch 的 随机种子不一样
-        train_loader.generator.manual_seed(epoch)
+        if isinstance(train_loader.sampler, RandomSampler):
+            train_loader.sampler.generator.manual_seed(epoch)
+        elif isinstance(train_loader.sampler, DistributedSampler):
+            train_loader.sampler.set_epoch(epoch)
+
         for input_tensors, labels in train_loader:
             if skip_batches > 0:
                 # 这里可以优化，避免掉不必要的数据加载与数据预处理的耗时
@@ -383,12 +442,13 @@ def train(
             global_steps += 1
 
             if global_steps % training_args.logging_steps == 0:
-                training_bar.write(
-                    f"Train: epoch {epoch} / {training_args.num_train_epochs}, "
-                    f"steps: {global_steps} / {total_steps}, "
-                    f"training loss: {loss.item():.4f}"
-                )
-                writer.add_scalar("training loss", loss.item(), global_steps)
+                if is_main_process():
+                    training_bar.write(
+                        f"Train: epoch {epoch} / {training_args.num_train_epochs}, "
+                        f"steps: {global_steps} / {total_steps}, "
+                        f"training loss: {loss.item():.4f}"
+                    )
+                    writer.add_scalar("training loss", loss.item(), global_steps)
 
             eval_metrics = None
             if (
@@ -399,20 +459,23 @@ def train(
                     model, val_loader, criterion, dtype=dtype, device=device
                 )
 
-                training_bar.write(
-                    f"Evalute: epoch {epoch} / {training_args.num_train_epochs}, "
-                    f"evaluation loss: {eval_metrics['loss']}, "
-                    f"accuracy@top1: {eval_metrics['accuracy@top1']}, "
-                    f"accuracy@top5: {eval_metrics['accuracy@top5']}"
-                )
+                if is_main_process():
+                    training_bar.write(
+                        f"Evalute: epoch {epoch} / {training_args.num_train_epochs}, "
+                        f"evaluation loss: {eval_metrics['loss']}, "
+                        f"accuracy@top1: {eval_metrics['accuracy@top1']}, "
+                        f"accuracy@top5: {eval_metrics['accuracy@top5']}"
+                    )
 
-                writer.add_scalar("evaluation loss", eval_metrics["loss"], global_steps)
-                writer.add_scalar(
-                    "accuracy@top1", eval_metrics["accuracy@top1"], global_steps
-                )
-                writer.add_scalar(
-                    "accuracy@top5", eval_metrics["accuracy@top5"], global_steps
-                )
+                    writer.add_scalar(
+                        "evaluation loss", eval_metrics["loss"], global_steps
+                    )
+                    writer.add_scalar(
+                        "accuracy@top1", eval_metrics["accuracy@top1"], global_steps
+                    )
+                    writer.add_scalar(
+                        "accuracy@top5", eval_metrics["accuracy@top5"], global_steps
+                    )
 
             save_checkpoints(
                 global_steps,
@@ -424,7 +487,13 @@ def train(
                 loss,
                 eval_metrics,
             )
-            training_bar.update()
+
+            if get_world_size() > 1:
+                # 所有进程等待主进程的 checkpoint 存储完成
+                dist.barrier()
+
+            if is_main_process():
+                training_bar.update()
 
         lr_scheduler.step()
 
@@ -453,12 +522,16 @@ def main():
         handlers=[logging.StreamHandler(sys.stdout)],
     )
 
-    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    # ========= setup distiribted env =========
+    if get_world_size() > 1:
+        backend = "nccl" if torch.cuda.is_available() else "gloo"
+        dist.init_process_group(backend=backend)
 
     # ========= build model =========
     model = create_model(model_args.name, pretrained=model_args.pretrained)
+    local_rank = int(os.environ.get("LOCAL_RANK", "0"))
+    device = torch.device(f"cuda:{local_rank}" if torch.cuda.is_available() else "cpu")
     model = model.to(device=device)
-
     # ========= build optimizer, scheduler, grad_scaler =========
     optimizer = optim.SGD(
         model.parameters(),
@@ -485,23 +558,33 @@ def main():
     global_steps = maybe_load_checkpoints(
         training_args, model, optimizer, lr_scheduler, grad_scaler, device
     )
+    if get_world_size() > 1:
+        model = DDP(model)
     # =========  prepare dataloader =============
     train_loader, val_loader = prepare_datalader(dataset_args, training_args)
 
-    # start train
-    train(
-        training_args,
-        global_steps,
-        model,
-        train_loader,
-        val_loader,
-        criterion,
-        optimizer,
-        lr_scheduler,
-        grad_scaler,
-        dtype,
-        device,
-    )
+    try:
+        # start train
+        train(
+            training_args,
+            global_steps,
+            model,
+            train_loader,
+            val_loader,
+            criterion,
+            optimizer,
+            lr_scheduler,
+            grad_scaler,
+            dtype,
+            device,
+        )
+    except KeyboardInterrupt:
+        logger.warning(
+            f"The KeyboardInterrupt signal was captured, exiting all processes."
+        )
+
+    if get_world_size() > 1:
+        dist.destroy_process_group()
 
 
 if __name__ == "__main__":
