@@ -73,10 +73,10 @@ class DatasetArguments:
 @dataclass
 class TrainingArguments:
     output_dir: str
-    seed: int = None
+    seed: Optional[int] = None
     fp16: bool = False
     bf16: bool = False
-    max_grad_norm: float = None
+    max_grad_norm: float = 1.0
     learning_rate: float = 0.1
     train_batch_size_per_device: int = 8
     eval_batch_size_per_device: int = 8
@@ -85,12 +85,12 @@ class TrainingArguments:
     momentum: float = 0.9
     num_train_epochs: int = 3
     logging_steps: int = 500
-    eval_steps: int = None
-    save_steps: int = None
+    eval_steps: Optional[int] = None
+    save_steps: Optional[int] = None
     save_safetensors: bool = False
     dataloader_num_workers: int = 0
     dataloader_pin_memory: bool = False
-    resume_from_checkpoint: str = None
+    resume_from_checkpoint: Optional[str] = None
 
 
 class ImageNetDataset(Dataset):
@@ -248,27 +248,23 @@ class Trainer:
             self.load_checkpoints()
 
         if get_world_size() > 1:
-            model = DDP(model)
+            self.model = DDP(self.model)
 
-        current_batch_idx = (
-            self.global_steps * self.training_args.grad_accumulation_batches
-        )
-        start_epoch = current_batch_idx // len(self.train_loader) + 1
-        skip_batches = current_batch_idx % len(self.train_loader)
+        batch_idx = self.global_steps * self.training_args.grad_accumulation_batches
+        start_epoch = batch_idx // len(self.train_loader) + 1
+        skip_batches = batch_idx % len(self.train_loader)
 
         if is_main_process():
-            training_bar = tqdm(total=self.total_steps, dynamic_ncols=True, unit="step")
-            training_bar.set_description("Training")
-            training_bar.update(self.global_steps)
+            self.training_bar = tqdm(
+                total=self.total_steps, dynamic_ncols=True, unit="step"
+            )
+            self.training_bar.set_description("Training")
+            self.training_bar.update(self.global_steps)
 
         for epoch in range(start_epoch, self.training_args.num_train_epochs + 1):
-            # 用于保证每个 epoch 的 随机种子不一样
-            if isinstance(self.train_loader.sampler, RandomSampler):
-                self.train_loader.sampler.generator.manual_seed(epoch)
-            elif isinstance(self.train_loader.sampler, DistributedSampler):
-                self.train_loader.sampler.set_epoch(epoch)
-
             self.epoch = epoch
+            # 用于保证每个 epoch 的 随机种子不一样
+            self.set_dataloader_sampler_seed()
 
             for input_tensors, labels in self.train_loader:
                 if skip_batches > 0:
@@ -276,8 +272,14 @@ class Trainer:
                     skip_batches -= 1
                     continue
 
-                input_tensors = input_tensors.to(device=self.device)
-                labels = labels.to(device=self.device)
+                non_blocking = self.training_args.dataloader_pin_memory
+                input_tensors = input_tensors.to(
+                    device=self.device, non_blocking=non_blocking
+                )
+                labels = labels.to(device=self.device, non_blocking=non_blocking)
+
+                if batch_idx == 52:
+                    print(f"rank = {dist.get_rank()}, data: ", labels[:10].tolist())
 
                 with torch.autocast(
                     device_type=self.device.type,
@@ -289,24 +291,17 @@ class Trainer:
                     # 缩放损失并反向传播
                     self.grad_scaler.scale(loss).backward()
 
-                current_batch_idx += 1
+                batch_idx += 1
 
                 # 未达到 AC 指定的 batch，则不进行梯度更新以及日志打印等
-                if (
-                    current_batch_idx % self.training_args.grad_accumulation_batches
-                    != 0
-                ):
+                if batch_idx % self.training_args.grad_accumulation_batches != 0:
                     continue
 
                 # 进行梯度裁剪，防止出现梯度爆炸
-                if (
-                    self.training_args.max_grad_norm is not None
-                    and self.training_args.max_grad_norm > 0
-                ):
-                    self.grad_scaler.unscale_(self.optimizer)
-                    torch.nn.utils.clip_grad_norm_(
-                        self.model.parameters(), self.training_args.max_grad_norm
-                    )
+                self.grad_scaler.unscale_(self.optimizer)
+                torch.nn.utils.clip_grad_norm_(
+                    self.model.parameters(), self.training_args.max_grad_norm
+                )
                 # 更新模型参数
                 self.grad_scaler.step(self.optimizer)
                 # 更新 GradScaler
@@ -314,31 +309,37 @@ class Trainer:
                 self.optimizer.zero_grad()
                 self.global_steps += 1
 
-                self.loging_training_metrics(loss, training_bar)
-                eval_metrics = self.evaluate_and_logging_metrics(training_bar)
+                self.loging_training_metrics(loss)
+                eval_metrics = self.evaluate_and_logging_metrics()
                 self.save_checkpoints(loss, eval_metrics)
 
                 if is_main_process():
-                    training_bar.update()
+                    self.training_bar.update()
 
             self.lr_scheduler.step()
 
-    def loging_training_metrics(self, loss, progress_bar):
+    def set_dataloader_sampler_seed(self):
+        if isinstance(self.train_loader.sampler, RandomSampler):
+            self.train_loader.sampler.generator.manual_seed(self.epoch)
+        elif isinstance(self.train_loader.sampler, DistributedSampler):
+            self.train_loader.sampler.set_epoch(self.epoch)
+
+    def loging_training_metrics(self, loss):
         if self.global_steps % self.training_args.logging_steps != 0:
             return
         if not is_main_process():
             return
-        progress_bar.write(
+        self.training_bar.write(
             f"Train: epoch {self.epoch} / {self.training_args.num_train_epochs}, "
-            f"steps: {self.global_steps} / {progress_bar.total}, "
+            f"steps: {self.global_steps} / {self.training_bar.total}, "
             f"training loss: {loss.item():.4f}"
         )
         self.writer.add_scalar("training loss", loss.item(), self.global_steps)
 
     @torch.inference_mode()
     def evaluate(self):
-        top1_num_matches = 0
-        top5_num_matches = 0
+        top1_num_matches = torch.tensor(0, device=self.device)
+        top5_num_matches = torch.tensor(0, device=self.device)
         total_loss = torch.tensor(0.0, device=self.device)
 
         if is_main_process():
@@ -379,7 +380,7 @@ class Trainer:
             "accuracy@top5": top5_num_matches.item() / len(self.val_loader.dataset),
         }
 
-    def evaluate_and_logging_metrics(self, progress_bar):
+    def evaluate_and_logging_metrics(self):
         if self.training_args.eval_steps is None:
             return None
         if self.global_steps % self.training_args.eval_steps != 0:
@@ -388,7 +389,7 @@ class Trainer:
         eval_metrics = self.evaluate()
 
         if is_main_process():
-            progress_bar.write(
+            self.training_bar.write(
                 f"Evalute: epoch {self.epoch} / {self.training_args.num_train_epochs}, "
                 f"evaluation loss: {eval_metrics['loss']}, "
                 f"accuracy@top1: {eval_metrics['accuracy@top1']}, "
@@ -414,9 +415,10 @@ class Trainer:
         if self.global_steps % self.training_args.save_steps != 0:
             return
 
+        save_dir = Path(f"{self.training_args.output_dir}/checkpoints")
+        save_dir.mkdir(parents=True, exist_ok=True)
+
         if is_main_process():
-            save_dir = Path(f"{self.training_args.output_dir}/checkpoints")
-            save_dir.mkdir(parents=True, exist_ok=True)
 
             # logger.info(f"Saving checkpoint to: {save_dir}")
 
@@ -431,7 +433,7 @@ class Trainer:
                 json.dump(training_states, state_file, indent=2)
 
             if isinstance(self.model, DDP):
-                model = model.module
+                model = self.model.module
             else:
                 model = self.model
 
@@ -444,18 +446,22 @@ class Trainer:
 
             torch.save(self.optimizer.state_dict(), f"{save_dir}/optimizer.pt")
             torch.save(self.lr_scheduler.state_dict(), f"{save_dir}/scheduler.pt")
-            torch.save(self.grad_scaler.state_dict(), f"{save_dir}/grad_scalar.pt")
+            torch.save(self.grad_scaler.state_dict(), f"{save_dir}/grad_scaler.pt")
 
-            # 保存整个训练环境的随机数生成器的状态
-            # ref: huggingface transformers(v4.46.3): trainer.py#L3153
-            rng_states = {
-                "python": random.getstate(),
-                "numpy": np.random.get_state(),
-                "cpu": torch.random.get_rng_state(),
-            }
-            if torch.cuda.is_available():
-                rng_states["cuda"] = torch.cuda.get_rng_state()
-            torch.save(rng_states, f"{save_dir}/rng_state.pth")
+        # 保存整个训练环境的随机数生成器的状态
+        # ref: huggingface transformers(v4.46.3): trainer.py#L3153
+        rng_states = {
+            "python": random.getstate(),
+            "numpy": np.random.get_state(),
+            "cpu": torch.random.get_rng_state(),
+        }
+        if torch.cuda.is_available():
+            rng_states["cuda"] = torch.cuda.get_rng_state()
+
+        rank_id_str = ""
+        if get_world_size() > 1:
+            rank_id_str = f"_{dist.get_rank()}"
+        torch.save(rng_states, f"{save_dir}/rng_state{rank_id_str}.pth")
 
         if get_world_size() > 1:
             dist.barrier()
@@ -500,12 +506,16 @@ class Trainer:
         self.lr_scheduler.load_state_dict(scheduler_states)
 
         scaler_states = torch.load(
-            f"{checkpoint_root}/grad_scalar.pt", self.device, weights_only=True
+            f"{checkpoint_root}/grad_scaler.pt", self.device, weights_only=True
         )
         self.grad_scaler.load_state_dict(scaler_states)
 
+        rank_id_str = ""
+        if get_world_size() > 1:
+            rank_id_str = f"_{dist.get_rank()}"
+
         rng_states = torch.load(
-            f"{checkpoint_root}/rng_state.pth", "cpu", weights_only=False
+            f"{checkpoint_root}/rng_state{rank_id_str}.pth", "cpu", weights_only=False
         )
         random.setstate(rng_states["python"])
         np.random.set_state(rng_states["numpy"])
