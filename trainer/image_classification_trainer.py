@@ -212,7 +212,7 @@ class Trainer:
         val_loader: DataLoader,
         criterion: nn.Module,
         optimizer: optim.Optimizer,
-        lr_scheduler: optim.lr_scheduler.LRScheduler,
+        lr_scheduler: LRScheduler,
         device: torch.device,
     ):
         self.model = model
@@ -254,12 +254,14 @@ class Trainer:
         start_epoch = batch_idx // len(self.train_loader) + 1
         skip_batches = batch_idx % len(self.train_loader)
 
-        if is_main_process():
-            self.training_bar = tqdm(
-                total=self.total_steps, dynamic_ncols=True, unit="step"
-            )
-            self.training_bar.set_description("Training")
-            self.training_bar.update(self.global_steps)
+        self.training_bar = tqdm(
+            total=self.total_steps,
+            dynamic_ncols=True,
+            unit="step",
+            disable=not is_main_process(),
+        )
+        self.training_bar.set_description("Training")
+        self.training_bar.update(self.global_steps)
 
         for epoch in range(start_epoch, self.training_args.num_train_epochs + 1):
             self.epoch = epoch
@@ -277,9 +279,6 @@ class Trainer:
                     device=self.device, non_blocking=non_blocking
                 )
                 labels = labels.to(device=self.device, non_blocking=non_blocking)
-
-                if batch_idx == 52:
-                    print(f"rank = {dist.get_rank()}, data: ", labels[:10].tolist())
 
                 with torch.autocast(
                     device_type=self.device.type,
@@ -313,8 +312,7 @@ class Trainer:
                 eval_metrics = self.evaluate_and_logging_metrics()
                 self.save_checkpoints(loss, eval_metrics)
 
-                if is_main_process():
-                    self.training_bar.update()
+                self.training_bar.update()
 
             self.lr_scheduler.step()
 
@@ -342,14 +340,14 @@ class Trainer:
         top5_num_matches = torch.tensor(0, device=self.device)
         total_loss = torch.tensor(0.0, device=self.device)
 
-        if is_main_process():
-            prediction_bar = tqdm(
-                desc="Evaluating",
-                total=len(self.val_loader),
-                leave=False,
-                dynamic_ncols=True,
-                unit="batch",
-            )
+        prediction_bar = tqdm(
+            desc="Evaluating",
+            total=len(self.val_loader),
+            leave=False,
+            dynamic_ncols=True,
+            unit="batch",
+            disable=not is_main_process(),
+        )
 
         for batch_data in self.val_loader:
             input_tensors, labels = batch_data
@@ -366,8 +364,7 @@ class Trainer:
             top1_num_matches += _compute_topk_matches(logits, labels, k=1)
             top5_num_matches += _compute_topk_matches(logits, labels, k=5)
 
-            if is_main_process():
-                prediction_bar.update()
+            prediction_bar.update()
 
         if get_world_size() > 1:
             dist.all_reduce(total_loss, dist.ReduceOp.AVG)
@@ -395,7 +392,6 @@ class Trainer:
                 f"accuracy@top1: {eval_metrics['accuracy@top1']}, "
                 f"accuracy@top5: {eval_metrics['accuracy@top5']}"
             )
-
             self.writer.add_scalar(
                 "evaluation loss", eval_metrics["loss"], self.global_steps
             )

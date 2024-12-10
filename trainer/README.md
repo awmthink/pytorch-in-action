@@ -26,5 +26,11 @@
 * save checkpoint 只在全局主进程（rank == 0）中进行执行。对于 DDP 模型，在模型保存前要进行 unwrap； save checkpoint 时最好主动进行次 `dist.barrier`。
 * 对于`DistributedSampler`的 DataLoader，由于随机数 seed 控制逻辑与 `RandomSampler` 不一致，所以需要分别处理。
 
+> note: DDP 模式下发现 resume 时不能完全重现后续 step 的 loss，但通过打印查看获取到的 batch 数据是一样的，后续再进一步一定位。
 
+
+# Version3: 使用 HuggingFace 的 `accelerator`
+
+
+ref: https://github.com/huggingface/transformers/blob/main/examples/pytorch/image-classification/run_image_classification_no_trainer.py
 
