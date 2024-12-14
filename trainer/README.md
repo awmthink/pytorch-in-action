@@ -29,8 +29,13 @@
 > note: DDP 模式下发现 resume 时不能完全重现后续 step 的 loss，但通过打印查看获取到的 batch 数据是一样的，后续再进一步一定位。
 
 
-# Version3: 使用 HuggingFace 的 `accelerator`
+# Version 3：使用 HuggingFace 的 `accelerator`
 
 
-ref: https://github.com/huggingface/transformers/blob/main/examples/pytorch/image-classification/run_image_classification_no_trainer.py
+1. 使用 `accelerator.prepare` 会自动的将 model 在分布式环境下包装为 `DDP`，把`DataLoader`的 `Sampler` 改为 `DistributedSampler`
+2. 整体训练 checkpoint 的 state 的保存与加载，直接使用`accelerator`的接口，可以自动保存模型、优化器、调度器、随机数状态等。
+3. `accelerator` 提供了判断 `is_main_process`的接口。
+4. `acceleartor` 本身提供了一些分布式集合通信的接口，用于在主进程Gather 一些 metrics
+5. `accelerator.accumulate()` 上下文管理器可以用于处理梯度累计的问题，并支持用`sync_gradients`来识别当前 step 是否为梯度更新的 step
+6. `accelerator` 中使用 `tracker`来提供日志记录的相关功能。
 

@@ -1,6 +1,6 @@
 import os
 import sys
-import json
+import shutil
 import random
 import logging
 from pathlib import Path
@@ -88,6 +88,7 @@ class TrainingArguments:
     eval_steps: Optional[int] = None
     save_steps: Optional[int] = None
     save_safetensors: bool = False
+    save_total_limit: Optional[int] = 3
     dataloader_num_workers: int = 0
     dataloader_pin_memory: bool = False
     resume_from_checkpoint: Optional[str] = None
@@ -309,8 +310,8 @@ class Trainer:
                 self.global_steps += 1
 
                 self.loging_training_metrics(loss)
-                eval_metrics = self.evaluate_and_logging_metrics()
-                self.save_checkpoints(loss, eval_metrics)
+                self.evaluate_and_logging_metrics()
+                self.save_checkpoints()
 
                 self.training_bar.update()
 
@@ -388,7 +389,7 @@ class Trainer:
         if is_main_process():
             self.training_bar.write(
                 f"Evalute: epoch {self.epoch} / {self.training_args.num_train_epochs}, "
-                f"evaluation loss: {eval_metrics['loss']}, "
+                f"evaluation loss: {eval_metrics['loss']:.4f}, "
                 f"accuracy@top1: {eval_metrics['accuracy@top1']}, "
                 f"accuracy@top5: {eval_metrics['accuracy@top5']}"
             )
@@ -401,9 +402,8 @@ class Trainer:
             self.writer.add_scalar(
                 "accuracy@top5", eval_metrics["accuracy@top5"], self.global_steps
             )
-        return eval_metrics
 
-    def save_checkpoints(self, loss, eval_metrics):
+    def save_checkpoints(self):
 
         if self.training_args.save_steps is None:
             return
@@ -411,23 +411,12 @@ class Trainer:
         if self.global_steps % self.training_args.save_steps != 0:
             return
 
-        save_dir = Path(f"{self.training_args.output_dir}/checkpoints")
+        save_dir = Path(
+            f"{self.training_args.output_dir}/checkpoints/checkpoint-{self.global_steps}"
+        )
         save_dir.mkdir(parents=True, exist_ok=True)
 
         if is_main_process():
-
-            # logger.info(f"Saving checkpoint to: {save_dir}")
-
-            training_states = {
-                "global_steps": self.global_steps,
-                "traning_loss": loss.item(),
-            }
-            if eval_metrics is not None:
-                training_states["eval_metrics"] = eval_metrics
-
-            with open(f"{save_dir}/training_states.json", "w") as state_file:
-                json.dump(training_states, state_file, indent=2)
-
             if isinstance(self.model, DDP):
                 model = self.model.module
             else:
@@ -459,50 +448,73 @@ class Trainer:
             rank_id_str = f"_{dist.get_rank()}"
         torch.save(rng_states, f"{save_dir}/rng_state{rank_id_str}.pth")
 
+        if self.training_args.save_total_limit is not None and is_main_process():
+            # Limit total number of checkpoints
+            checkpoints_dir = f"{self.training_args.output_dir}/checkpoints"
+            checkpoints = sorted(
+                [d for d in os.listdir(checkpoints_dir) if d.startswith("checkpoint-")],
+                key=lambda x: int(x.split("-")[-1]),
+            )
+            # Keep only the most recent 3 checkpoints
+            max_checkpoints = self.training_args.save_total_limit
+            for checkpoint in checkpoints[:-max_checkpoints]:
+                checkpoint_path = os.path.join(checkpoints_dir, checkpoint)
+                shutil.rmtree(checkpoint_path)
+
         if get_world_size() > 1:
             dist.barrier()
 
     def load_checkpoints(self):
+        checkpoint_path = self.training_args.resume_from_checkpoint
+        # 如果是相对路径，则将组装为相对于 output_dir 的绝对路径
+        if not os.path.isabs(checkpoint_path):
+            checkpoint_path = os.path.join(
+                self.training_args.output_dir, checkpoint_path
+            )
         # 如果指定了 resume 的目录，但是目录不存在，则直接从零开始训练
-        if not os.path.exists(self.training_args.resume_from_checkpoint):
+        if not os.path.exists(checkpoint_path):
             return 0
 
+        # 如果路径中存在 checkpoint 的目录列表，则提取最后一个 checkpoint 目录
+        checkpoints = sorted(
+            [d for d in os.listdir(checkpoint_path) if d.startswith("checkpoint-")],
+            key=lambda x: int(x.split("-")[-1]),
+        )
+        if len(checkpoints) > 1:
+            checkpoint_path = os.path.join(checkpoint_path, checkpoints[-1])
+
         if is_main_process():
-            logger.info(
-                f"loading checkpoint from: {self.training_args.resume_from_checkpoint}"
-            )
+            logger.info(f"loading checkpoint from: {checkpoint_path}")
 
-        checkpoint_root = self.training_args.resume_from_checkpoint
-
-        with open(f"{checkpoint_root}/training_states.json") as state_file:
-            training_states = json.load(state_file)
-            self.global_steps = training_states["global_steps"]
+        path = os.path.basename(checkpoint_path)
+        training_difference = os.path.splitext(path)[0]
+        self.global_steps = int(training_difference.replace("checkpoint-", ""))
 
         if self.training_args.save_safetensors:
             from safetensors.torch import load_file
 
             model_states = load_file(
-                f"{checkpoint_root}/model.safetensors", self.device.index
+                f"{checkpoint_path}/model.safetensors", self.device.index
             )
             self.model.load_state_dict(model_states)
         else:
             model_states = torch.load(
-                f"{checkpoint_root}/model.pt", self.device, weights_only=True
+                f"{checkpoint_path}/model.pt", self.device, weights_only=True
             )
             self.model.load_state_dict(model_states)
 
         optimizer_states = torch.load(
-            f"{checkpoint_root}/optimizer.pt", self.device, weights_only=True
+            f"{checkpoint_path}/optimizer.pt", self.device, weights_only=True
         )
         self.optimizer.load_state_dict(optimizer_states)
 
         scheduler_states = torch.load(
-            f"{checkpoint_root}/scheduler.pt", self.device, weights_only=True
+            f"{checkpoint_path}/scheduler.pt", self.device, weights_only=True
         )
         self.lr_scheduler.load_state_dict(scheduler_states)
 
         scaler_states = torch.load(
-            f"{checkpoint_root}/grad_scaler.pt", self.device, weights_only=True
+            f"{checkpoint_path}/grad_scaler.pt", self.device, weights_only=True
         )
         self.grad_scaler.load_state_dict(scaler_states)
 
@@ -511,7 +523,7 @@ class Trainer:
             rank_id_str = f"_{dist.get_rank()}"
 
         rng_states = torch.load(
-            f"{checkpoint_root}/rng_state{rank_id_str}.pth", "cpu", weights_only=False
+            f"{checkpoint_path}/rng_state{rank_id_str}.pth", "cpu", weights_only=False
         )
         random.setstate(rng_states["python"])
         np.random.set_state(rng_states["numpy"])

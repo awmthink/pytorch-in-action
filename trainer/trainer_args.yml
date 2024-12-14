@@ -23,4 +23,4 @@ training:
   save_safetensors: true
   dataloader_num_workers: 4
   dataloader_pin_memory: true
-  resume_from_checkpoint: outputs/checkpoints
+  resume_from_checkpoint: checkpoints
