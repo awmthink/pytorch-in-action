@@ -37,5 +37,6 @@
 3. `accelerator` 提供了判断 `is_main_process`的接口。
 4. `acceleartor` 本身提供了一些分布式集合通信的接口，用于在主进程Gather 一些 metrics
 5. `accelerator.accumulate()` 上下文管理器可以用于处理梯度累计的问题，并支持用`sync_gradients`来识别当前 step 是否为梯度更新的 step
-6. `accelerator` 中使用 `tracker`来提供日志记录的相关功能。
+6. 可以直接使用 accelerator 提供的 `clip_grad_norm_` 接口，这样可以避免需要先对 loss 进行 unscale
+7. `accelerator` 中使用 `tracker`来提供日志记录的相关功能。
 

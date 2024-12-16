@@ -199,8 +199,26 @@ def prepare_datalader(dataset_args, training_args):
 
 
 def _compute_topk_matches(logits, labels, k):
-    _, preds = torch.topk(logits, k, dim=-1)
-    return (preds == labels.unsqueeze(-1)).sum()
+    """Compute number of matches for top-k predictions.
+
+    Args:
+        logits: Model output logits
+        labels: Ground truth labels
+        k: Integer or tuple/list of k values to compute matches for
+
+    Returns:
+        If k is int: Number of matches for top-k
+        If k is tuple/list: List of number of matches for each k
+    """
+    if isinstance(k, (tuple, list)):
+        max_k = max(k)
+        _, preds = torch.topk(logits, max_k, dim=-1)
+        expanded_labels = labels.unsqueeze(-1)
+        matches = [(preds[:, :ki] == expanded_labels).sum() for ki in k]
+        return matches
+    else:
+        _, preds = torch.topk(logits, k, dim=-1)
+        return (preds == labels.unsqueeze(-1)).sum()
 
 
 class Trainer:
@@ -362,8 +380,9 @@ class Trainer:
                 loss = self.criterion(logits, labels)
 
             total_loss += loss
-            top1_num_matches += _compute_topk_matches(logits, labels, k=1)
-            top5_num_matches += _compute_topk_matches(logits, labels, k=5)
+            top1_matches, top5_matches = _compute_topk_matches(logits, labels, k=(1, 5))
+            top1_num_matches += top1_matches
+            top5_num_matches += top5_matches
 
             prediction_bar.update()
 
