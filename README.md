@@ -24,6 +24,19 @@ A hands-on repository dedicated to building modern deep learning layers, models 
 | Pytorch Image Models | [Timm](./timm/tutuorials.ipynb)| 介绍了如何使用 timm 库来获取主流的视觉模型以及预训练权重，我们也可以基于这些模型进行扩展 |
 | transformers库的整体介绍 | [transformers](./transformers/tutorials.ipynb) | 包括了Pipeline、Tokenizer、Model、Trainer、Dataset、Evaluate等 |
 
+
+## OpenAI Triton Tutorials
+
+参考 Triton 官方的 [Tutorials](https://triton-lang.org/main/getting-started/tutorials/index.html)，加入一些注释与图解，方便更容易理解。
+
+| Title | Notebooks | 说明 |
+|:---:|:---:|---|
+| VectorAdd | [VectorAdd](./triton/vector-add.ipynb)| 入门性的介绍，如何使用 triton 来编码 CUDA 世界中的 Hello,world |
+| Fused Softmax | [Fused Softmax](./triton/fused-softmax.ipynb)| 使用 Triton 来实现算子融合，并通过优化并发的线程块的数量，使得 Triton 版本的性能超过 Pytorch 原生算子，比原生手写实现快 4 倍 |
+| Low Memory Dropout | [Low Memory Dropout](./triton/low-memory-dropout.ipynb)| 重点演示了 Triton 中的随机数生成，应用在 Dropout 上可以使得在 Backward 阶段进行 Mask 矩阵重计算，从而节省 Mask 所占用的显存。 |
+| Matrix Multiplication | [Matrix Multiplication ](./triton/matrix-multiplication.ipynb)| 使用 Triton 来实现经典的矩阵乘法，通过优化输出矩阵的计算顺序，来优化 L2 缓存。 |
+| Layer Norm | [LayerNorm](./triton/layer-norm.ipynb)|  |
+
 ## Models
 
 ### Fundamental Modules
